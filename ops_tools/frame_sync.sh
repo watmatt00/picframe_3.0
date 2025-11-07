@@ -1,138 +1,139 @@
 #!/bin/bash
+#
+# frame_sync.sh — Sync local photo frame folder with Google Drive via rclone
+# Runs every 15 minutes (recommended from cron or systemd timer)
+# Author: Matt P / ChatGPT optimized version
+#
 
-LOG_FILE="$HOME/logs/frame_sync.log"
-#RCLONE_CONFIG="/home/pi/.config/rclone/rclone.conf"
-#RCLONE_REMOTE="kfphotos:album/frame"
-#LDIR="./Pictures/frame"
-Rclone_remote="kfgdrive:dframe"
-LDIR="./Pictures/gdt_frame"
+set -euo pipefail
 
-# Function to log messages
+# -------------------------------------------------------------------
+# CONFIGURATION
+# -------------------------------------------------------------------
+RCLONE_REMOTE="kfgdrive:dframe"
+LDIR="$HOME/Pictures/gdt_frame"
+LOG_DIR="$HOME/logs"
+LOG_FILE="$LOG_DIR/frame_sync_$(date +%Y-%m-%d).log"
+RETENTION_DAYS=7
+PICFRAME_SERVICE="picframe.service"
+RCLONE_OPTS="--verbose --transfers=4 --checkers=4 --fast-list"
+
+PATH=/usr/local/bin:/usr/bin:/bin
+
+# -------------------------------------------------------------------
+# FUNCTIONS
+# -------------------------------------------------------------------
+
 log_message() {
     local message="$1"
     echo "$(date '+%Y-%m-%d %H:%M:%S') frame_sync.sh - $message" | tee -a "$LOG_FILE"
 }
 
-# Ensure the log file exists
-if [ ! -f "$LOG_FILE" ]; then
-    sudo touch "$LOG_FILE"
-    if [ $? -ne 0 ]; then
-        echo "ERROR: Unable to create log file at $LOG_FILE. Check permissions."
+rotate_logs() {
+    # Remove any logs older than $RETENTION_DAYS
+    find "$LOG_DIR" -name "frame_sync_*.log" -mtime +"$RETENTION_DAYS" -exec rm -f {} \; 2>/dev/null || true
+}
+
+ensure_log_dir() {
+    mkdir -p "$LOG_DIR"
+    if [ ! -w "$LOG_DIR" ]; then
+        echo "ERROR: Cannot write to log directory $LOG_DIR" >&2
         exit 1
     fi
-    sudo chmod 664 "$LOG_FILE"  # Set write permissions for owner and group
-    log_message "Log file created."
-fi
+}
 
-# Function to get directory counts
-get_directory_counts() {
+get_directory_count() {
     local dir_type="$1"
     local count=0
     if [ "$dir_type" = "google" ]; then
-        #count=$(sudo rclone ls "$RCLONE_REMOTE" | wc -l)
-	 count=$(sudo rclone ls kfgdrive:dframe |wc -l)
+        count=$(rclone lsf "$RCLONE_REMOTE" --files-only | wc -l)
     elif [ "$dir_type" = "local" ]; then
-        count=$(ls "$LDIR" | wc -l)
+        count=$(find "$LDIR" -type f | wc -l)
     else
-        log_message "ERROR: Invalid directory type specified: $dir_type"
-        exit 1
-    fi
-
-    if [ $? -ne 0 ]; then
-        log_message "ERROR: Failed to get file count for $dir_type."
+        log_message "ERROR: Invalid directory type '$dir_type'"
         exit 1
     fi
     echo "$count"
 }
 
-# Function to sync directories
 sync_directories() {
-    log_message "Syncing directories."
-    sudo rclone sync kfgdrive:dframe ./Pictures/gdt_frame |wc -l
-    if [ $? -ne 0 ]; then
-        log_message "ERROR: Sync failed."
-        exit 1
-    fi
-    log_message "Sync complete."
+    log_message "Starting rclone sync..."
+    local attempts=0
+    local max_attempts=3
+
+    while (( attempts < max_attempts )); do
+        if rclone sync "$RCLONE_REMOTE" "$LDIR" $RCLONE_OPTS >>"$LOG_FILE" 2>&1; then
+            log_message "Sync successful."
+            return 0
+        fi
+        attempts=$((attempts + 1))
+        log_message "Sync attempt $attempts failed. Retrying in 10s..."
+        sleep 10
+    done
+
+    log_message "ERROR: Sync failed after $max_attempts attempts."
+    return 1
 }
-# Function to restart picframe.service and log the process
+
 restart_picframe_service() {
-    local service="picframe.service"
-
-    log_message "Attempting to restart $service."
-
-    # Stop the service
-    systemctl --user stop "$service"
-    if [ $? -ne 0 ]; then
-        log_message "ERROR: Failed to stop $service."
-        return 1
+    log_message "Restarting $PICFRAME_SERVICE..."
+    if systemctl --user restart "$PICFRAME_SERVICE" 2>>"$LOG_FILE"; then
+        if systemctl --user is-active --quiet "$PICFRAME_SERVICE"; then
+            log_message "$PICFRAME_SERVICE restarted successfully."
+            return 0
+        fi
     fi
-    log_message "$service successfully stopped."
-
-    # Start the service
-    systemctl --user start "$service"
-    if [ $? -ne 0 ]; then
-        log_message "ERROR: Failed to start $service."
-        return 1
-    fi
-
-    # Verify the service status
-    systemctl --user is-active --quiet "$service"
-    if [ $? -eq 0 ]; then
-        log_message "$service restarted successfully."
-    else
-        log_message "ERROR: $service failed to restart."
-        return 1
-    fi
+    log_message "ERROR: Failed to restart $PICFRAME_SERVICE."
+    return 1
 }
 
+# -------------------------------------------------------------------
+# MAIN SCRIPT
+# -------------------------------------------------------------------
 
-# Main process
-log_message "Starting directory check and sync process."
+ensure_log_dir
+rotate_logs
+log_message "----- Starting directory check and sync process -----"
 
-# Get initial counts
-gdir_count=$(get_directory_counts "google")
-ldir_count=$(get_directory_counts "local")
+# Validate local directory
+if [ ! -d "$LDIR" ]; then
+    log_message "Local directory $LDIR not found. Creating..."
+    mkdir -p "$LDIR"
+fi
 
-log_message "Google Album file count: $gdir_count"
-log_message "Local directory file count: $ldir_count"
+# Get counts
+gdir_count=$(get_directory_count "google")
+ldir_count=$(get_directory_count "local")
+log_message "Google folder file count: $gdir_count"
+log_message "Local folder file count: $ldir_count"
 
-# Compare counts
+# Compare counts and sync if needed
 if [ "$gdir_count" -eq "$ldir_count" ]; then
-    log_message "Counts match. No sync needed. Exiting."
+    log_message "Counts match. No sync required."
     exit 0
 else
-    log_message "Counts do not match. Syncing directories."
-    sync_directories
-    sync_performed=true
-    log_message "Sync completed. Restarting picframe.service."
-#    restart_picframe_service
-#    ./T1_picframe_svc_restart.sh
-    restart_picframe_service
-   if [ $? -ne 0 ]; then
-       log_message "ERROR: Service restart failed after sync."
-       exit 1
+    log_message "Counts differ. Initiating sync..."
+    if sync_directories; then
+        log_message "Sync completed successfully. Restarting display service."
+        restart_picframe_service || log_message "WARNING: Service restart failed."
     else
-       log_message "Service restart succeeded."
-    fi
-fi
-
-# Final verification only if a sync was performed
-if [ "${sync_performed:-false}" = true ]; then
-    log_message "Final Verification: Checking directories after sync."
-    gdir_count=$(get_directory_counts "google")
-    ldir_count=$(get_directory_counts "local")
-
-    log_message "Final Verification: Google Album file count: $gdir_count"
-    log_message "Final Verification: Local directory file count: $ldir_count"
-
-    if [ "$gdir_count" -eq "$ldir_count" ]; then
-        log_message "Final Verification: Directories are in sync."
-    else
-        log_message "ERROR: Final Verification failed. Directories still do not match."
+        log_message "ERROR: Sync failed; skipping service restart."
         exit 1
     fi
 fi
 
+# Final verification
+log_message "Verifying sync results..."
+gdir_count_post=$(get_directory_count "google")
+ldir_count_post=$(get_directory_count "local")
+log_message "Post-sync Google count: $gdir_count_post"
+log_message "Post-sync Local count: $ldir_count_post"
 
+if [ "$gdir_count_post" -eq "$ldir_count_post" ]; then
+    log_message "Final verification: Directories are synchronized."
+else
+    log_message "WARNING: Final verification mismatch. Manual check recommended."
+fi
 
+log_message "----- Process complete -----"
+exit 0
