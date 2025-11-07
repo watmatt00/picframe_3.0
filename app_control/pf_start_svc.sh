@@ -11,7 +11,7 @@ log_message() {
 
 
 # Start the service
-log_message "Begining of restart"
+log_message "Begining of svc start"
 if systemctl --user start picframe.service; then
     echo "Service picframe.service started successfully."
     log_message "Service picframe.service started successfully"
