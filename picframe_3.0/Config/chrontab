@@ -1,0 +1,7 @@
+
+#runs each hour
+0 * * * * export XDG_RUNTIME_DIR=/run/user/$(id -u) && /home/pi/t_frame_sync.sh 
+
+
+#runs sync at boot
+@reboot export XDG_RUNTIME_DIR=/run/user/$(id -u) && /home/pi/t_frame_sync.sh
