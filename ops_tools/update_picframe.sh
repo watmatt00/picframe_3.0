@@ -1,10 +1,11 @@
-#!/bin/bash
+##!/bin/bash
 # update_picframe.sh
-# Purpose: Pull latest updates from GitHub and restart picframe service
+# Purpose: Pull latest updates from GitHub, refresh crontab, and restart picframe service
 
 LOG_FILE="$HOME/logs/frame_sync.log"
 REPO_DIR="$HOME/picframe_3.0"
 RESTART_SCRIPT="$REPO_DIR/app_control/pf_restart_svc.sh"
+CRONTAB_FILE="$REPO_DIR/app_control/crontab"
 
 log_message() {
     local message="$1"
@@ -32,6 +33,18 @@ fi
 # Fix permissions
 chmod -R 755 "$REPO_DIR"
 log_message "Permissions set."
+
+# Auto-apply updated crontab if it exists
+if [ -f "$CRONTAB_FILE" ]; then
+    log_message "Updating system crontab from repo..."
+    if crontab "$CRONTAB_FILE"; then
+        log_message "System crontab successfully updated from $CRONTAB_FILE"
+    else
+        log_message "Failed to update system crontab!"
+    fi
+else
+    log_message "No crontab file found at $CRONTAB_FILE (skipping)"
+fi
 
 # Restart the picframe service
 if [ -x "$RESTART_SCRIPT" ]; then
