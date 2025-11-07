@@ -1,98 +1,140 @@
-# picframe_3.0
+# 🖼️ PicFrame 3.0 — Raspberry Pi Digital Picture Frame
 
-A modular Raspberry Pi digital photo frame system with automated file sync, service control, and remote update capability.
+PicFrame 3.0 is a DIY digital picture frame project built on a Raspberry Pi.  
+It automatically syncs photos from a Google Drive folder using **rclone**,  
+displays them via the **PicFrame** viewer service, and includes tools  
+for syncing, verification, promotion, and Git-based updates.
 
 ---
 
-## 📁 Directory Structure
+## 📁 Project Structure
 
 ```
 picframe_3.0/
-├── app_control/       # Application & service control scripts
-│   ├── pf_start_svc.sh     # Starts the picframe service
-│   ├── pf_stop_svc.sh      # Stops the picframe service
-│   ├── pf_restart_svc.sh   # Restarts the picframe service
-│   └── crontab             # system crontab example
+├── app_control/
+│   ├── crontab                # Reference: linked system crontab file
+│   ├── pf_start_svc.sh        # Starts picframe.service
+│   ├── pf_stop_svc.sh         # Stops picframe.service
+│   ├── pf_restart_svc.sh      # Restarts picframe.service
 │
-├── ops_tools/          # Operational tools and maintenance scripts
-│   ├── frame_sync.sh        # Syncs local/remote photo directories
-│   ├── chk_sync.sh          # Verifies file sync status
-│   ├── t_frame_sync.sh      # Test version of frame_sync.sh
-│   ├── t_chk_sync.sh        # Test version of chk_sync.sh
-│   └── update_picframe.sh   # Pulls updates from GitHub and restarts service
+├── ops_tools/
+│   ├── frame_sync.sh          # Main operational sync script
+│   ├── chk_sync.sh            # Manual sync verification tool
+│   ├── t_frame_sync.sh        # Test/Beta version of frame_sync.sh
+│   ├── t_chk_sync.sh          # Test/Beta version of chk_sync.sh
+│   ├── promote_to_prod.sh     # Promotion tool: t_ → production scripts
+│   └── update_picframe.sh     # Updates local repository from GitHub
 │
-└── logs/               # (not versioned) Runtime logs are written here
-```
-
----
-
-## ⚙️ Service Overview
-
-The **picframe** display app runs as a *user-level* `systemd` service:
-
-```bash
-systemctl --user status picframe.service
-```
-
-- **Service file:** `~/.config/systemd/user/picframe.service`  
-- **Startup script:** `/home/pi/start_picframe_app.sh`  
-- **Virtual environment:** `/home/pi/venv_picframe/`  
-- **Config directory:** `/home/pi/picframe_data/config/`
-
----
-
-## 🔁 Update Workflow
-
-Run this command on the Pi to update the repo, set permissions, and restart the service:
-
-```bash
-~/picframe_3.0/ops_tools/update_picframe.sh
-```
-
-This script:
-1. Calls `git sync` (fetch + rebase + push)
-2. Resets permissions
-3. Invokes `app_control/pf_restart_svc.sh`
-
-Logs are appended to `~/logs/frame_sync.log`.
-
----
-
-## 🧠 Git Shortcuts
-
-A custom alias `git sync` has been configured for both PC and Pi:
-
-```bash
-git sync
-```
-
-Equivalent to:
-```bash
-git fetch origin && git pull --rebase origin main && git push origin main
+└── README.md
 ```
 
 ---
 
 ## 🛠️ Typical Usage
 
-| Task | Command |
-|------|----------|
+| **Task** | **Command** |
+|-----------|--------------|
 | Start picframe | `bash ~/picframe_3.0/app_control/pf_start_svc.sh` |
 | Stop picframe | `bash ~/picframe_3.0/app_control/pf_stop_svc.sh` |
 | Restart picframe | `bash ~/picframe_3.0/app_control/pf_restart_svc.sh` |
 | Check sync | `bash ~/picframe_3.0/ops_tools/chk_sync.sh` |
 | Force sync | `bash ~/picframe_3.0/ops_tools/frame_sync.sh` |
 | Update & restart | `bash ~/picframe_3.0/ops_tools/update_picframe.sh` |
+| Promote test scripts to production | `bash ~/picframe_3.0/ops_tools/promote_to_prod.sh` |
+
+---
+
+## ⚙️ Script Overview
+
+### 🔄 `frame_sync.sh`
+Main operational sync script that compares file counts between Google Drive and the local photo directory.  
+If differences exist, it performs an `rclone sync`, restarts `picframe.service`, and logs results.
+
+---
+
+### 🧮 `chk_sync.sh`
+Manual verification script to check file count differences or perform detailed file mismatch analysis.
+
+**Usage:**
+```bash
+./chk_sync.sh        # Summary only
+./chk_sync.sh --d    # Detailed difference report
+```
+
+---
+
+### 🧪 `t_frame_sync.sh` & `t_chk_sync.sh`
+Development/test versions used for beta validation of sync logic or performance before promotion.
+
+---
+
+### 🚀 `promote_to_prod.sh`
+Automates the promotion of tested (`t_`) scripts into production versions.  
+Provides a pre-promotion summary of changes and confirmation prompt before archiving or renaming scripts.  
+
+**Features:**
+- Detects test scripts ready for promotion (`t_frame_sync.sh`, `t_chk_sync.sh`)
+- Displays exact file changes and archive names
+- Requests confirmation before proceeding
+- Temporarily disables cron during promotion
+- Archives replaced production scripts with timestamps
+- Commits, tags, and pushes changes to GitHub automatically
+- Restores cron once complete
+
+---
+
+### 🔁 `update_picframe.sh`
+Pulls updates from GitHub and ensures all scripts are executable.
+
+**Usage:**
+```bash
+cd ~/picframe_3.0
+bash ops_tools/update_picframe.sh
+```
 
 ---
 
 ## 🧩 Notes
 
-- Logs are stored in `~/logs/frame_sync.log`
-- All scripts assume repository root: `/home/pi/picframe_3.0`
-- `picframe.service` is a *user-level* service — no `sudo` required
+- Logs are stored in `~/logs/frame_sync.log` (rotated weekly)  
+- All scripts assume the repository root: `/home/pi/picframe_3.0`  
+- `picframe.service` runs as a **user-level service** — no `sudo` required  
+- The `app_control/crontab` file defines scheduled tasks and is **linked to the active crontab** for version control  
+- `rclone.conf` must be owned and readable by `pi`:
+  ```bash
+  sudo chown pi:pi /home/pi/.config/rclone/rclone.conf
+  sudo chmod 600 /home/pi/.config/rclone/rclone.conf
+  ```
 
 ---
 
-**Author:** [@watmatt00](https://github.com/watmatt00)  
-**License:** MIT (optional — add if desired)
+## 🧠 Git Shortcuts
+
+A universal set of custom Git aliases configured for both PC and Pi.
+
+### 🔄 Custom Git Commands
+
+```bash
+git sync   = git fetch origin && git pull --rebase origin main && git push origin main
+git quick  = git add . && git commit -m "quick update" && git push
+git commit = git commit -am
+```
+
+These shortcuts streamline common Git operations for fast, consistent updates across systems.
+
+---
+
+## 🧠 Best Practices
+
+- Always test using `t_*.sh` scripts before promoting to production  
+- Avoid editing production scripts directly; use GitHub workflow  
+- Run `git sync` before testing or promoting to ensure latest code  
+- Use Git tags (`prod_YYYY-MM-DD_HHMM`) created during promotion for rollback or history tracking:
+  ```bash
+  git tag
+  git checkout <tag_name>
+  ```
+
+---
+
+© 2025 Matt P. — *DIY PicFrame 3.0*
