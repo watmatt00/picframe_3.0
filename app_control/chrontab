@@ -1,7 +1,19 @@
+# ── Reboot every Sunday at 03:00
+0 3 * * 0 /sbin/reboot
 
-#runs each hour
-0 * * * * export XDG_RUNTIME_DIR=/run/user/$(id -u) && /home/pi/t_frame_sync.sh 
+# ── Sync frame every 15 minutes
+*/15 * * * * XDG_RUNTIME_DIR=/run/user/$(id -u) /bin/bash /home/pi/picframe_3.0/ops_tools/frame_sync.sh >> /home/pi/logs/frame_sync.log 2>&1
 
+# ── Display control (uses DISPLAY=:0 and XDG_RUNTIME_DIR so xrandr works from cron)
 
-#runs sync at boot
-@reboot export XDG_RUNTIME_DIR=/run/user/$(id -u) && /home/pi/t_frame_sync.sh
+# Sun–Thu: turn OFF at 22:45
+45 22 * * 0-4 DISPLAY=:0 XDG_RUNTIME_DIR=/run/user/$(id -u) /usr/bin/xrandr --output HDMI-1 --off
+
+# Fri–Sat: turn OFF at 23:45
+45 23 * * 5,6 DISPLAY=:0 XDG_RUNTIME_DIR=/run/user/$(id -u) /usr/bin/xrandr --output HDMI-1 --off
+
+# Mon–Fri: turn ON at 06:00
+0 6 * * 1-5 DISPLAY=:0 XDG_RUNTIME_DIR=/run/user/$(id -u) /usr/bin/xrandr --output HDMI-1 --mode 1920x1080 --rate 60
+
+# Sat–Sun: turn ON at 07:00
+0 7 * * 6,0 DISPLAY=:0 XDG_RUNTIME_DIR=/run/user/$(id -u) /usr/bin/xrandr --output HDMI-1 --mode 1920x1080 --rate 60
