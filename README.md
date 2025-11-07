@@ -12,7 +12,7 @@ picframe_3.0/
 │   ├── pf_start_svc.sh     # Starts the picframe service
 │   ├── pf_stop_svc.sh      # Stops the picframe service
 │   ├── pf_restart_svc.sh   # Restarts the picframe service
-│   └── crontab             # Optional system crontab example
+│   └── crontab             # system crontab example
 │
 ├── ops_tools/          # Operational tools and maintenance scripts
 │   ├── frame_sync.sh        # Syncs local/remote photo directories
