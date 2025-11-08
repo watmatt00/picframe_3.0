@@ -1,4 +1,4 @@
-##!/bin/bash
+#!/bin/bash
 # update_picframe.sh
 # Purpose: Pull latest updates from GitHub, refresh crontab, and restart picframe service
 
@@ -55,6 +55,10 @@ else
     log_message "Restart script not found or not executable: $RESTART_SCRIPT"
     exit 1
 fi
+
+# 🔄 Reload and restart user service to apply latest override
+systemctl --user daemon-reload && systemctl --user restart picframe.service
+log_message "Systemd user service reloaded and restarted."
 
 log_message "===== picframe update complete ====="
 exit 0
