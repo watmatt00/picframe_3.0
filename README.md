@@ -84,18 +84,17 @@ Provides a pre-promotion summary of changes and confirmation prompt before archi
 ---
 
 ### 🔁 `update_picframe.sh`
-Handles the complete update and refresh process for the PicFrame environment.
+Handles the complete tools script update and refresh process for the PicFrame environment.
 What it does:
-Pulls the latest repository changes from GitHub (git sync)
-Applies the latest permissions to all files
-Updates the system crontab from the repo’s app_control/crontab
-Restarts the PicFrame display service (pf_restart_svc.sh)
-Reloads and restarts the systemd user service to apply any configuration or path changes
+- Pulls the latest repository changes from GitHub (git sync)
+- Applies the latest permissions to all files
+- Updates the system crontab from the repo’s app_control/crontab
+- Restarts the PicFrame display service (pf_restart_svc.sh)
+- Reloads and restarts the systemd user service to apply any configuration or path changes
 
 Usage:
-
-cd ~/picframe_3.0
-bash ops_tools/update_picframe.sh
+```bash
+./ops_tools/update_picframe.sh
 ```
 
 ---
