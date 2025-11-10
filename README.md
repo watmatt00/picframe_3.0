@@ -1,7 +1,7 @@
 # 🖼️ PicFrame 3.0 — Raspberry Pi Digital Picture Frame
 
 PicFrame 3.0 is a DIY digital picture frame project built on a Raspberry Pi.  
-It automatically syncs photos from a Google Drive folder using **rclone**,  
+It syncs photos from a Google Drive folder using **rclone**,  
 displays them via the **PicFrame** viewer service, and includes tools  
 for syncing, verification, promotion, and Git-based updates.
 
@@ -34,12 +34,12 @@ picframe_3.0/
 
 | **Task** | **Command** |
 |-----------|--------------|
-| Start picframe | `bash ~/picframe_3.0/app_control/pf_start_svc.sh` |
-| Stop picframe | `bash ~/picframe_3.0/app_control/pf_stop_svc.sh` |
-| Restart picframe | `bash ~/picframe_3.0/app_control/pf_restart_svc.sh` |
-| Check sync | `bash ~/picframe_3.0/ops_tools/chk_sync.sh` |
-| Force sync | `bash ~/picframe_3.0/ops_tools/frame_sync.sh` |
-| Update & restart | `bash ~/picframe_3.0/ops_tools/update_picframe.sh` |
+| Start picframe Service| `bash ~/picframe_3.0/app_control/pf_start_svc.sh` |
+| Stop picframe Service | `bash ~/picframe_3.0/app_control/pf_stop_svc.sh` |
+| Restart picframe Service | `bash ~/picframe_3.0/app_control/pf_restart_svc.sh` |
+| Check sync status | `bash ~/picframe_3.0/ops_tools/chk_sync.sh` |
+| Sync cloud and local picture directories | `bash ~/picframe_3.0/ops_tools/frame_sync.sh` |
+| Update app tool & restart | `bash ~/picframe_3.0/ops_tools/update_picframe.sh` |
 | Promote test scripts to production | `bash ~/picframe_3.0/ops_tools/promote_to_prod.sh` |
 
 ---
@@ -84,10 +84,16 @@ Provides a pre-promotion summary of changes and confirmation prompt before archi
 ---
 
 ### 🔁 `update_picframe.sh`
-Pulls updates from GitHub and ensures all scripts are executable.
+Handles the complete update and refresh process for the PicFrame environment.
+What it does:
+Pulls the latest repository changes from GitHub (git sync)
+Applies the latest permissions to all files
+Updates the system crontab from the repo’s app_control/crontab
+Restarts the PicFrame display service (pf_restart_svc.sh)
+Reloads and restarts the systemd user service to apply any configuration or path changes
 
-**Usage:**
-```bash
+Usage:
+
 cd ~/picframe_3.0
 bash ops_tools/update_picframe.sh
 ```
