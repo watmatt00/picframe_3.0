@@ -2,7 +2,7 @@
 0 3 * * 0 /sbin/reboot
 
 # ── Sync frame every 15 minutes
-*/15 * * * * XDG_RUNTIME_DIR=/run/user/$(id -u) /bin/bash /home/pi/picframe_3.0/ops_tools/frame_sync.sh >> /home/pi/logs/frame_sync.log 2>&1
+#*/15 * * * * XDG_RUNTIME_DIR=/run/user/$(id -u) /bin/bash /home/pi/picframe_3.0/ops_tools/frame_sync.sh >> /home/pi/logs/frame_sync.log 2>&1
 
 # ── Display control (uses DISPLAY=:0 and XDG_RUNTIME_DIR so xrandr works from cron)
 
