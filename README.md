@@ -57,8 +57,8 @@ Manual verification script to check file count differences or perform detailed f
 
 **Usage:**
 ```bash
-./chk_sync.sh        # Summary only
-./chk_sync.sh --d    # Detailed difference report
+./picframe_3.0/ops_tools/chk_sync.sh        # Summary only
+./picframe_3.0/ops_tools/chk_sync.sh --d    # Detailed difference report
 ```
 
 ---
