@@ -1,102 +1,53 @@
 #!/bin/bash
-#
-# t_chk_sync.sh — Verify sync state between Google Drive and local photo folder
-# This script checks for count differences and (optionally) lists file mismatches.
-#
-# Usage:
-#   ./t_chk_sync.sh       → Summary only
-#   ./t_chk_sync.sh --d   → Detailed difference report using rclone check
-#
-
 set -euo pipefail
+# t_chk_sync.sh
+# Purpose: Compare Google Drive folder vs. local directory and report differences clearly
 
-# -------------------------------------------------------------------
-# CONFIGURATION
-# -------------------------------------------------------------------
-RCLONE_REMOTE="kfgdrive:dframe"
-LDIR="$HOME/Pictures/gdt_frame"
-PATH=/usr/local/bin:/usr/bin:/bin
+# --------------------------------------------
+# Configuration
+# --------------------------------------------
+LOCAL_DIR="/home/pi/Pictures/gdt_frame"
+REMOTE_DIR="gdrive:gdt_frame"
+RCLONE_OPTS="--one-way --log-level NOTICE"
 
-# -------------------------------------------------------------------
-# FUNCTIONS
-# -------------------------------------------------------------------
-
-get_directory_count() {
-    local dir_type="$1"
-    local count=0
-    if [ "$dir_type" = "google" ]; then
-        count=$(rclone lsf "$RCLONE_REMOTE" --files-only | wc -l)
-    elif [ "$dir_type" = "local" ]; then
-        count=$(find "$LDIR" -type f | wc -l)
-    else
-        echo "ERROR: Invalid directory type '$dir_type'" >&2
-        exit 1
-    fi
-    echo "$count"
-}
-
-show_details() {
-    echo
+# --------------------------------------------
+# Functions
+# --------------------------------------------
+print_header() {
     echo "--------------------------------------------"
-    echo -e "\e[36m   Detailed Sync Difference Report\e[0m"
+    echo "   Detailed Sync Difference Report"
     echo "--------------------------------------------"
-    echo
+    echo ""
     echo "Comparing Google Drive vs Local Directory..."
     echo "(This may take a minute for large collections)"
-    echo
-
-    # Show actual file differences and mismatches
-    rclone check "$RCLONE_REMOTE" "$LDIR" --one-way --size-only --verbose
-
-    echo
-    echo "--------------------------------------------"
-    echo -e "\e[36mEnd of Difference Report\e[0m"
-    echo "--------------------------------------------"
-    echo
+    echo ""
 }
 
-# -------------------------------------------------------------------
-# MAIN SCRIPT
-# -------------------------------------------------------------------
+print_footer() {
+    echo ""
+    echo "--------------------------------------------"
+    echo "End of Difference Report"
+    echo "--------------------------------------------"
+}
 
+# --------------------------------------------
+# Main Script
+# --------------------------------------------
 clear
-echo
-echo "--------------------------------------------"
-echo "   Google Drive vs Local Directory Check"
-echo "--------------------------------------------"
-echo
-echo -e "\e[33mTIP:\e[0m Run with \e[32m--d\e[0m for detailed mismatch report."
-echo
+print_header
 
-# Ensure local directory exists
-if [ ! -d "$LDIR" ]; then
-    echo "ERROR: Local directory '$LDIR' not found."
-    exit 1
-fi
+# Run comparison and suppress redundant output lines
+set +e  # temporarily disable exit-on-error for grep handling
+rclone check "$REMOTE_DIR" "$LOCAL_DIR" $RCLONE_OPTS 2>&1 | \
+    grep -v -E "matching files|INFO  :" || true
+RESULT=${PIPESTATUS[0]}
+set -e  # re-enable strict mode
 
-# Get counts
-gdir_count=$(get_directory_count "google")
-ldir_count=$(get_directory_count "local")
-
-echo "Google Drive file count : $gdir_count"
-echo "Local directory file count : $ldir_count"
-echo
-
-# Compare counts
-if [ "$gdir_count" -eq "$ldir_count" ]; then
-    echo -e "\e[32m✅ Directories are in sync.\e[0m"
+# Display summary
+if [ $RESULT -eq 0 ]; then
+    echo "✅ All files match between Google Drive and Local Directory."
 else
-    echo -e "\e[31m❌ Directories are NOT in sync.\e[0m"
+    echo "⚠️ Differences detected — review logs or rerun with higher verbosity for details."
 fi
 
-# Optional detailed comparison
-if [ "${1:-}" = "--d" ]; then
-    show_details
-else
-    echo
-fi
-
-exit 0
-
-
-
+print_footer
