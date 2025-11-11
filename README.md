@@ -81,6 +81,11 @@ Provides a pre-promotion summary of changes and confirmation prompt before archi
 - Commits, tags, and pushes changes to GitHub automatically
 - Restores cron once complete
 
+Usage:
+```bash
+./picframe_3.0/ops_tools/update_picframe.sh
+```
+
 ---
 
 ### 🔁 `update_picframe.sh`
@@ -94,7 +99,7 @@ What it does:
 
 Usage:
 ```bash
-./ops_tools/update_picframe.sh
+./picframe_3.0/ops_tools/update_picframe.sh
 ```
 
 ---
