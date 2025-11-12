@@ -15,10 +15,13 @@ RCLONE_OPTS="--one-way --log-level NOTICE"
 # FUNCTIONS
 # -------------------------------------------------------------------
 print_header() {
+    echo
     echo "--------------------------------------------"
-    echo "   Detailed Sync Difference Report"
+    echo "   Google Drive vs Local Directory Check"
     echo "--------------------------------------------"
-    echo ""
+    echo
+    echo -e "\e[33mTIP:\e[0m Run with \e[32m--d\e[0m for detailed mismatch report."
+    echo
 }
 
 print_footer() {
