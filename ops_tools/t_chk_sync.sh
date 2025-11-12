@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 # t_chk_sync.sh
-# Purpose: Compare Google Drive folder vs. local directory and report differences clearly
-# This script checks for differences but does not modify or log results.
+# Purpose: Quickly compare Google Drive folder vs. local directory using file counts by default.
+# Use --d for a detailed rclone check.
 
 # -------------------------------------------------------------------
 # CONFIGURATION
@@ -19,9 +19,6 @@ print_header() {
     echo "   Detailed Sync Difference Report"
     echo "--------------------------------------------"
     echo ""
-    echo "Comparing Google Drive vs Local Directory..."
-    echo "(This may take a minute for large collections)"
-    echo ""
 }
 
 print_footer() {
@@ -31,28 +28,54 @@ print_footer() {
     echo "--------------------------------------------"
 }
 
+quick_check() {
+    echo "Performing quick file count comparison..."
+    remote_count=$(rclone lsf "$RCLONE_REMOTE" --files-only | wc -l)
+    local_count=$(find "$LOCAL_DIR" -type f | wc -l)
+
+    echo "Remote file count: $remote_count"
+    echo "Local  file count: $local_count"
+
+    if [ "$remote_count" -eq "$local_count" ]; then
+        echo "✅ Quick check: File counts match."
+    else
+        echo "⚠️ Quick check mismatch: remote=$remote_count local=$local_count"
+    fi
+}
+
+detailed_check() {
+    echo "Performing detailed rclone check (may take several minutes)..."
+    set +e
+    OUTPUT=$(rclone check "$RCLONE_REMOTE" "$LOCAL_DIR" $RCLONE_OPTS 2>&1)
+    RESULT=$?
+    set -e
+
+    echo "$OUTPUT" | grep -v -E "matching files|INFO  :" || true
+
+    if echo "$OUTPUT" | grep -q "Failed to create file system"; then
+        echo "❌ Rclone remote '$RCLONE_REMOTE' not found. Verify with:  rclone listremotes"
+    elif [ $RESULT -eq 0 ]; then
+        echo "✅ All files match between remote and local directory."
+    else
+        echo "⚠️ Differences detected — review logs or rerun with higher verbosity for details."
+    fi
+}
+
 # -------------------------------------------------------------------
 # MAIN SCRIPT
 # -------------------------------------------------------------------
 clear
 print_header
 
-# Run comparison and suppress redundant output lines while preserving rclone's exit code
-set +e
-OUTPUT=$(rclone check "$RCLONE_REMOTE" "$LOCAL_DIR" $RCLONE_OPTS 2>&1)
-RESULT=$?
-set -e
+default_mode=true
+if [[ "${1:-}" == "--d" ]]; then
+    default_mode=false
+fi
 
-# Print filtered output (hide redundant “matching files” and “INFO” lines)
-echo "$OUTPUT" | grep -v -E "matching files|INFO  :" || true
-
-# Handle known outcomes
-if echo "$OUTPUT" | grep -q "Failed to create file system"; then
-    echo "❌ Rclone remote '$RCLONE_REMOTE' not found. Verify with:  rclone listremotes"
-elif [ $RESULT -eq 0 ]; then
-    echo "✅ All files match between remote and local directory."
+if $default_mode; then
+    quick_check
 else
-    echo "⚠️ Differences detected — review logs or rerun with higher verbosity for details."
+    detailed_check
 fi
 
 print_footer
