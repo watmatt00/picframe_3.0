@@ -3,7 +3,7 @@ set -euo pipefail
 
 # -------------------------------------------------------------------
 # promote_to_prod.sh
-# Purpose: Promote test scripts to production, archive selected files,
+# Safely promote test scripts to production, archive selected files,
 # prune old archives, commit repo state, create git tag, and push.
 # -------------------------------------------------------------------
 
@@ -13,9 +13,7 @@ APP_CTRL_DIR="$REPO_ROOT/app_control"
 ARCHIVE_DIR="$OPS_DIR/archive"
 LOG_FILE="$HOME/logs/frame_sync.log"
 
-# -------------------------------------------------------------------
-# ARCHIVE LIST — Update this list to include any files to archive/prune
-# -------------------------------------------------------------------
+# Scripts that should be archived & pruned
 ARCHIVE_LIST=("chk_sync.sh" "frame_sync.sh")
 
 log_message() {
@@ -23,11 +21,20 @@ log_message() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') [PROMOTE] $msg" | tee -a "$LOG_FILE"
 }
 
-cd "$REPO_ROOT" || { echo "Cannot cd to repo root: $REPO_ROOT"; exit 1; }
+cd "$REPO_ROOT" || { echo "Cannot cd to $REPO_ROOT"; exit 1; }
 
 log_message "=== Starting promotion to production ==="
 
 TIMESTAMP=$(date '+%Y%m%d-%H%M')
+
+# -------------------------------------------------------------------
+# SAFETY: Pre-pull to prevent divergence issues
+# -------------------------------------------------------------------
+log_message "Checking for remote changes..."
+git pull --rebase --autostash || {
+    log_message "ERROR: Unable to sync with remote repo. Aborting promotion."
+    exit 1
+}
 
 # -------------------------------------------------------------------
 # PREVIEW OF ACTIONS
@@ -42,7 +49,7 @@ for SCRIPT in "${ARCHIVE_LIST[@]}"; do
     echo "  • $SCRIPT → archive/$ARCHIVE_NAME"
 done
 
-# 2. Test → Prod promotions
+# 2. Test → Prod actions
 for TFILE in "$OPS_DIR"/t_*.sh; do
     [ -f "$TFILE" ] || continue
     BASE=$(basename "$TFILE" | sed 's/^t_//')
@@ -63,62 +70,60 @@ echo
 # -------------------------------------------------------------------
 for SCRIPT in "${ARCHIVE_LIST[@]}"; do
     SRC="$OPS_DIR/$SCRIPT"
-
     if [ -f "$SRC" ]; then
         DEST="$ARCHIVE_DIR/${SCRIPT%.sh}_$TIMESTAMP.sh"
         cp "$SRC" "$DEST"
         chmod 644 "$DEST"
         log_message "Archived $SCRIPT → archive/${SCRIPT%.sh}_$TIMESTAMP.sh"
 
-        # ---- PRUNE LOGIC (KEEP ONLY 10 LATEST VERSIONS FOR THIS FILE) ----
         FILE_PATTERN="${SCRIPT%.sh}_*.sh"
         FILES=($(ls -1t "$ARCHIVE_DIR"/$FILE_PATTERN 2>/dev/null || true))
-        TOTAL=${#FILES[@]}
 
-        if [ "$TOTAL" -gt 10 ]; then
+        if [ "${#FILES[@]}" -gt 10 ]; then
             for ((i=10; i<${#FILES[@]}; i++)); do
                 rm -f "${FILES[$i]}"
                 log_message "Pruned old archive: $(basename "${FILES[$i]}")"
             done
         fi
-
     else
-        log_message "WARNING: $SCRIPT not found — skipping archive"
+        log_message "WARNING: $SCRIPT missing — skipping archive"
     fi
 done
 
 # -------------------------------------------------------------------
-# Step 2: Promote test → prod (dynamic for all t_*.sh files)
+# Step 2: Promote test → prod (copy, keep test files)
 # -------------------------------------------------------------------
 for TFILE in "$OPS_DIR"/t_*.sh; do
     [ -f "$TFILE" ] || continue
     BASE=$(basename "$TFILE" | sed 's/^t_//')
-    mv "$TFILE" "$OPS_DIR/$BASE"
+
+    cp "$TFILE" "$OPS_DIR/$BASE"
     chmod +x "$OPS_DIR/$BASE"
-    log_message "Promoted $TFILE → $BASE"
+
+    log_message "Promoted (copied) $TFILE → $BASE (test preserved)"
 done
 
 # -------------------------------------------------------------------
-# Step 3: Git commit full repo state
+# Step 3: Git commit repo state
 # -------------------------------------------------------------------
 git add -A
 git commit -m "Production promotion on $(date '+%Y-%m-%d %H:%M')" || \
-    log_message "No changes to commit (Git clean)"
+    log_message "No changes to commit (clean repo)"
 log_message "Git commit complete"
 
 # -------------------------------------------------------------------
 # Step 4: Git tag
 # -------------------------------------------------------------------
 TAG="prod-$TIMESTAMP"
-git tag -a "$TAG" -m "Production promotion on $(date)"
+git tag -a "$TAG" -m "Promotion on $(date)"
 log_message "Created tag: $TAG"
 
 # -------------------------------------------------------------------
-# Step 5: Push to origin
+# Step 5: Push
 # -------------------------------------------------------------------
 git push
 git push --tags
-log_message "Pushed commit and tags to GitHub"
+log_message "Pushed commit + tag to GitHub"
 
 # -------------------------------------------------------------------
 # Step 6: Restart picframe service
