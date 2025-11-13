@@ -17,8 +17,6 @@ LOG_FILE="$HOME/logs/frame_sync.log"
 # ARCHIVE LIST — Update this list to include any files to archive/prune
 # -------------------------------------------------------------------
 ARCHIVE_LIST=("chk_sync.sh" "frame_sync.sh")
-# EXAMPLES FOR FUTURE:
-# ARCHIVE_LIST=("chk_sync.sh" "frame_sync.sh" "new_feature.sh")
 
 log_message() {
     local msg="$1"
@@ -30,6 +28,35 @@ cd "$REPO_ROOT" || { echo "Cannot cd to repo root: $REPO_ROOT"; exit 1; }
 log_message "=== Starting promotion to production ==="
 
 TIMESTAMP=$(date '+%Y%m%d-%H%M')
+
+# -------------------------------------------------------------------
+# PREVIEW OF ACTIONS
+# -------------------------------------------------------------------
+echo
+echo "The following promotions will occur:"
+echo
+
+# 1. Archive actions
+for SCRIPT in "${ARCHIVE_LIST[@]}"; do
+    ARCHIVE_NAME="${SCRIPT%.sh}_${TIMESTAMP}.sh"
+    echo "  • $SCRIPT → archive/$ARCHIVE_NAME"
+done
+
+# 2. Test → Prod promotions
+for TFILE in "$OPS_DIR"/t_*.sh; do
+    [ -f "$TFILE" ] || continue
+    BASE=$(basename "$TFILE" | sed 's/^t_//')
+    echo "  • $(basename "$TFILE") → $BASE"
+done
+
+echo
+read -rp "Proceed with promotion? (y/N): " CONFIRM
+if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
+    echo "Promotion cancelled."
+    log_message "Promotion aborted by user."
+    exit 0
+fi
+echo
 
 # -------------------------------------------------------------------
 # Step 1: Archive + prune selected files
@@ -76,7 +103,7 @@ done
 # -------------------------------------------------------------------
 git add -A
 git commit -m "Production promotion on $(date '+%Y-%m-%d %H:%M')" || \
-    log_message "No changes to commit (Git reported clean state)"
+    log_message "No changes to commit (Git clean)"
 log_message "Git commit complete"
 
 # -------------------------------------------------------------------
