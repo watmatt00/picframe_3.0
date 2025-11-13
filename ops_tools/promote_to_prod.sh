@@ -1,126 +1,103 @@
 #!/bin/bash
-#
-# promote_to_prod.sh — Safely promote tested t_ scripts to production
-# Includes preview with exact archive filenames, user confirmation,
-# cron disable/restore, backups, and Git tagging.
-#
-
 set -euo pipefail
 
-BASE_DIR="$HOME/picframe_3.0/ops_tools"
-ARCHIVE_DIR="$BASE_DIR/archive"
-CRON_BACKUP="$HOME/cron_backup_$(date +%Y%m%d_%H%M).txt"
-DATE_TAG=$(date +%Y-%m-%d_%H%M)
+# -------------------------------------------------------------------
+# promote_to_prod.sh
+# Purpose: Promote test scripts to production, archive selected files,
+# prune old archives, commit repo state, create git tag, and push.
+# -------------------------------------------------------------------
 
-cd "$BASE_DIR"
-
-echo
-echo "🚀 PicFrame Promotion Utility"
-echo "──────────────────────────────────────────────"
-echo "This script will promote your test scripts to production."
-echo "Working directory: $BASE_DIR"
-echo
+REPO_ROOT="$HOME/picframe_3.0"
+OPS_DIR="$REPO_ROOT/ops_tools"
+APP_CTRL_DIR="$REPO_ROOT/app_control"
+ARCHIVE_DIR="$OPS_DIR/archive"
+LOG_FILE="$HOME/logs/frame_sync.log"
 
 # -------------------------------------------------------------------
-# 1. Detect files to promote
+# ARCHIVE LIST — Update this list to include any files to archive/prune
 # -------------------------------------------------------------------
-declare -a PROMOTIONS=()
+ARCHIVE_LIST=("chk_sync.sh" "frame_sync.sh")
+# EXAMPLES FOR FUTURE:
+# ARCHIVE_LIST=("chk_sync.sh" "frame_sync.sh" "new_feature.sh")
 
-for base in frame_sync chk_sync; do
-    TEST_FILE="t_${base}.sh"
-    PROD_FILE="${base}.sh"
-    if [ -f "$TEST_FILE" ]; then
-        ARCHIVE_NAME="archive/${base}_${DATE_TAG}.sh"
-        if [ -f "$PROD_FILE" ]; then
-            PROMOTIONS+=("$TEST_FILE → $PROD_FILE (old version will be archived as $ARCHIVE_NAME)")
-        else
-            PROMOTIONS+=("$TEST_FILE → $PROD_FILE (new file will be created)")
-        fi
-    fi
-done
+log_message() {
+    local msg="$1"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [PROMOTE] $msg" | tee -a "$LOG_FILE"
+}
 
-if [ ${#PROMOTIONS[@]} -eq 0 ]; then
-    echo "⚠️  No test files (t_*.sh) found to promote."
-    echo "Nothing to do. Exiting."
-    exit 0
-fi
+cd "$REPO_ROOT" || { echo "Cannot cd to repo root: $REPO_ROOT"; exit 1; }
 
-echo "🧾 The following promotions will occur:"
-for p in "${PROMOTIONS[@]}"; do
-    echo "   • $p"
-done
+log_message "=== Starting promotion to production ==="
 
-echo
-read -rp "❓ Proceed with promotion and cron restart? [y/N]: " confirm
-if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-    echo "❌ Promotion canceled by user."
-    exit 0
-fi
-
-echo
-echo "🔄 Starting promotion process at $(date)"
-echo
+TIMESTAMP=$(date '+%Y%m%d-%H%M')
 
 # -------------------------------------------------------------------
-# 2. Backup and disable cron
+# Step 1: Archive + prune selected files
 # -------------------------------------------------------------------
-echo "📦 Backing up current crontab to $CRON_BACKUP"
-crontab -l > "$CRON_BACKUP" || echo "# Empty crontab" > "$CRON_BACKUP"
+for SCRIPT in "${ARCHIVE_LIST[@]}"; do
+    SRC="$OPS_DIR/$SCRIPT"
 
-echo "⏸️  Temporarily disabling cron jobs..."
-crontab -r
-sleep 2
+    if [ -f "$SRC" ]; then
+        DEST="$ARCHIVE_DIR/${SCRIPT%.sh}_$TIMESTAMP.sh"
+        cp "$SRC" "$DEST"
+        chmod 644 "$DEST"
+        log_message "Archived $SCRIPT → archive/${SCRIPT%.sh}_$TIMESTAMP.sh"
 
-# -------------------------------------------------------------------
-# 3. Prepare archive folder
-# -------------------------------------------------------------------
-mkdir -p "$ARCHIVE_DIR"
+        # ---- PRUNE LOGIC (KEEP ONLY 10 LATEST VERSIONS FOR THIS FILE) ----
+        FILE_PATTERN="${SCRIPT%.sh}_*.sh"
+        FILES=($(ls -1t "$ARCHIVE_DIR"/$FILE_PATTERN 2>/dev/null || true))
+        TOTAL=${#FILES[@]}
 
-# -------------------------------------------------------------------
-# 4. Promote scripts
-# -------------------------------------------------------------------
-for base in frame_sync chk_sync; do
-    TEST_FILE="t_${base}.sh"
-    PROD_FILE="${base}.sh"
-
-    if [ -f "$TEST_FILE" ]; then
-        echo "➡️  Promoting $TEST_FILE → $PROD_FILE"
-        ARCHIVE_FILE="${ARCHIVE_DIR}/${base}_${DATE_TAG}.sh"
-
-        if [ -f "$PROD_FILE" ]; then
-            mv "$PROD_FILE" "$ARCHIVE_FILE"
-            echo "   ↳ Archived old version as $ARCHIVE_FILE"
+        if [ "$TOTAL" -gt 10 ]; then
+            for ((i=10; i<${#FILES[@]}; i++)); do
+                rm -f "${FILES[$i]}"
+                log_message "Pruned old archive: $(basename "${FILES[$i]}")"
+            done
         fi
 
-        mv "$TEST_FILE" "$PROD_FILE"
-        chmod +x "$PROD_FILE"
-        echo "   ✅ Promotion complete for $PROD_FILE"
+    else
+        log_message "WARNING: $SCRIPT not found — skipping archive"
     fi
 done
 
 # -------------------------------------------------------------------
-# 5. Git commit and tag
+# Step 2: Promote test → prod (dynamic for all t_*.sh files)
 # -------------------------------------------------------------------
-if [ -d "$BASE_DIR/../.git" ]; then
-    cd "$BASE_DIR/.."
-    git add ops_tools/frame_sync.sh ops_tools/chk_sync.sh || true
-    git add ops_tools/archive || true
-    git commit -m "Promoted tested scripts to production on $DATE_TAG"
-    git tag -a "prod_${DATE_TAG}" -m "Promote t_ scripts to production"
-    git push && git push --tags
-    echo "📤 Changes committed and pushed to GitHub."
-else
-    echo "⚠️  Git repo not detected — skipping commit/tag step."
-fi
+for TFILE in "$OPS_DIR"/t_*.sh; do
+    [ -f "$TFILE" ] || continue
+    BASE=$(basename "$TFILE" | sed 's/^t_//')
+    mv "$TFILE" "$OPS_DIR/$BASE"
+    chmod +x "$OPS_DIR/$BASE"
+    log_message "Promoted $TFILE → $BASE"
+done
 
 # -------------------------------------------------------------------
-# 6. Restore cron
+# Step 3: Git commit full repo state
 # -------------------------------------------------------------------
-echo "🔁 Restoring cron jobs..."
-crontab "$CRON_BACKUP"
+git add -A
+git commit -m "Production promotion on $(date '+%Y-%m-%d %H:%M')" || \
+    log_message "No changes to commit (Git reported clean state)"
+log_message "Git commit complete"
 
-echo
-echo "✅ Promotion completed successfully at $(date)"
-echo "──────────────────────────────────────────────"
-echo "Cron has been re-enabled and production scripts are live."
+# -------------------------------------------------------------------
+# Step 4: Git tag
+# -------------------------------------------------------------------
+TAG="prod-$TIMESTAMP"
+git tag -a "$TAG" -m "Production promotion on $(date)"
+log_message "Created tag: $TAG"
+
+# -------------------------------------------------------------------
+# Step 5: Push to origin
+# -------------------------------------------------------------------
+git push
+git push --tags
+log_message "Pushed commit and tags to GitHub"
+
+# -------------------------------------------------------------------
+# Step 6: Restart picframe service
+# -------------------------------------------------------------------
+"$APP_CTRL_DIR/pf_restart_svc.sh"
+log_message "Restarted picframe service"
+
+log_message "=== Promotion complete: Tag $TAG ==="
 echo
