@@ -225,14 +225,15 @@ quick_mode_flow() {
     log_message "Post-sync Local count:  $ldir_count_post"
 
     if [ "$gdir_count_post" -eq "$ldir_count_post" ]; then
-        log_message "Final verification: Directories are synchronized."
-        log_message "SYNC_RESULT: OK"
-        return 0
-    else
-        log_message "WARNING: Final verification mismatch. Manual check recommended."
-        log_message "SYNC_RESULT: RESTART"
-        return 2
-    fi
+    log_message "Final verification: Directories are synchronized."
+    log_message "SYNC_RESULT: RESTART"
+    return 2        # <-- SUCCESSFUL SYNC → restart service
+else
+    log_message "WARNING: Final verification mismatch. Manual check recommended."
+    log_message "SYNC_RESULT: ERROR"
+    return 1        # <-- Failed verification → mark error
+fi
+
 }
 
 detailed_mode_flow() {
