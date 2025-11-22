@@ -45,10 +45,10 @@ else
     exit 1
 fi
 
-48: # Fix permissions on script files only (exclude archive directory)
-49: find "$REPO_DIR/app_control" -type f -name "*.sh" -exec chmod 755 {} \;
-50: find "$REPO_DIR/ops_tools" -type f -name "*.sh" ! -path "$REPO_DIR/ops_tools/archive/*" -exec chmod 755 {} \;
-51: log_message "Permissions set on script files (excluding archive)."
+# Fix permissions on script files only (exclude archive directory)
+find "$REPO_DIR/app_control" -type f -name "*.sh" -exec chmod 755 {} \;
+find "$REPO_DIR/ops_tools" -type f -name "*.sh" ! -path "$REPO_DIR/ops_tools/archive/*" -exec chmod 755 {} \;
+log_message "Permissions set on script files (excluding archive)."
 
 
 # Auto-apply updated crontab if it exists
