@@ -12,7 +12,7 @@ promotion, and Git-based updates.
 ```bash
 picframe_3.0/
 ├── app_control/
-│   ├── crontab                 # SAMPLE crontab (deployed by update_picframe.sh)
+│   ├── crontab                 # Template crontab (deployed by update_picframe.sh)
 │   ├── pf_start_svc.sh
 │   ├── pf_stop_svc.sh
 │   ├── pf_restart_svc.sh
@@ -30,7 +30,7 @@ picframe_3.0/
 ```
 
 **Notes:**
-- `app_control/crontab` is a **sample template**, not the live system crontab.
+- `app_control/crontab` is a **template**, not the live system crontab.
   The `update_picframe.sh` script installs this template into the user's actual crontab.
 - `frame_sync.sh` is the **production** sync script. New behavior is first
   developed and tested in `t_frame_sync.sh` and then promoted using
@@ -206,20 +206,47 @@ The typical workflow is:
 
 ## 🚀 promote_to_prod.sh
 
-Automates promotion from test (`t_*.sh`) to production scripts.
+Promotion Workflow (New – PC Only)
+Picframe now uses a clean two-stage workflow:
 
-Typical responsibilities:
-
-- Identify test scripts ready for promotion.
-- Archive old production versions with timestamped names.
-- Copy `t_frame_sync.sh` → `frame_sync.sh`, `t_chk_sync.sh` → `chk_sync.sh`, etc.
-- Optionally integrate with Git (commit + push).
-
-Usage example:
-
+  1. Development & testing (PC)
+  All code changes, including updates to test scripts (t_frame_sync.sh, t_chk_sync.sh, etc.), are done on your PC repo:
 ```bash
-bash ~/picframe_3.0/ops_tools/promote_to_prod.sh
+~/Downloads/GitHub/picframe_3.0
 ```
+
+The Pi should not be used for editing scripts inside the repo.
+2. Promotion to Production (PC Only)
+  Once changes are tested and working, run:
+```bash  
+./ops_tools/promote_to_prod.sh
+```
+
+This script (PC-only):
+  Archives existing production scripts (frame_sync.sh, chk_sync.sh)
+  Prunes the archive to the most recent 10 versions
+  Copies all t_*.sh files → production filenames
+  (e.g., t_frame_sync.sh → frame_sync.sh)
+  Leaves the t_*.sh test scripts intact
+  Performs a Git add, commit, tag, and push to GitHub
+  Blocks execution on the Pi (kframe) to keep Pi read-only
+  After running this promotion script, GitHub contains the new production scripts.
+
+Updating the Pi After Promotion
+  The Pi never edits code.
+  It only pulls updates.
+
+On the Pi, run:
+```bash
+~/picframe_3.0/ops_tools/update_picframe.sh
+```
+
+This script:
+  Performs a pull/rebase (no committing or tagging)
+  Refreshes the Pi crontab from app_control/crontab
+  Restarts picframe.service
+
+The Pi repo stays consistent with GitHub and remains read-only.
 
 ---
 

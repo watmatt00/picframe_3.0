@@ -3,15 +3,27 @@ set -euo pipefail
 
 # -------------------------------------------------------------------
 # promote_to_prod.sh
-# Safely promote test scripts to production, archive selected files,
-# prune old archives, commit repo state, create git tag, and push.
+# Run on DEV PC (not on Pi) to:
+#   - Safely promote test scripts (t_*.sh) to production names
+#   - Archive selected prod files and prune old archives
+#   - Commit repo state, create git tag, and push to GitHub
+#
+# Pi stays read-only: it will only ever pull these changes via
+# update_picframe.sh and never commit/tag/push.
 # -------------------------------------------------------------------
 
-REPO_ROOT="$HOME/picframe_3.0"
+REPO_ROOT="$HOME/Downloads/GitHub/picframe_3.0"
 OPS_DIR="$REPO_ROOT/ops_tools"
-APP_CTRL_DIR="$REPO_ROOT/app_control"
 ARCHIVE_DIR="$OPS_DIR/archive"
 LOG_FILE="$HOME/logs/frame_sync.log"
+
+# Safety: never run this on the Pi (kframe)
+HOSTNAME="$(hostname)"
+if [[ "$HOSTNAME" == "kframe" ]]; then
+    echo "ERROR: promote_to_prod.sh must NOT be run on Pi (kframe)."
+    echo "       Run this script on your PC repo only."
+    exit 1
+fi
 
 # Scripts that should be archived & pruned
 ARCHIVE_LIST=("chk_sync.sh" "frame_sync.sh")
@@ -22,8 +34,9 @@ log_message() {
 }
 
 cd "$REPO_ROOT" || { echo "Cannot cd to $REPO_ROOT"; exit 1; }
+mkdir -p "$ARCHIVE_DIR"
 
-log_message "=== Starting promotion to production ==="
+log_message "=== Starting promotion to production (PC) ==="
 
 TIMESTAMP=$(date '+%Y%m%d-%H%M')
 
@@ -44,25 +57,19 @@ echo "The following promotions will occur:"
 echo
 
 # 1. Archive actions
+echo "Archive + prune for:"
 for SCRIPT in "${ARCHIVE_LIST[@]}"; do
-    ARCHIVE_NAME="${SCRIPT%.sh}_${TIMESTAMP}.sh"
-    echo "  • $SCRIPT → archive/$ARCHIVE_NAME"
+    echo "  - $SCRIPT → archive with timestamp $TIMESTAMP (keep latest 10)"
 done
+echo
 
-# 2. Test → Prod actions
+# 2. Promotion actions
+echo "Test → Prod promotions:"
 for TFILE in "$OPS_DIR"/t_*.sh; do
     [ -f "$TFILE" ] || continue
     BASE=$(basename "$TFILE" | sed 's/^t_//')
-    echo "  • $(basename "$TFILE") → $BASE"
+    echo "  - $(basename "$TFILE") → $BASE"
 done
-
-echo
-read -rp "Proceed with promotion? (y/N): " CONFIRM
-if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
-    echo "Promotion cancelled."
-    log_message "Promotion aborted by user."
-    exit 0
-fi
 echo
 
 # -------------------------------------------------------------------
@@ -125,11 +132,6 @@ git push
 git push --tags
 log_message "Pushed commit + tag to GitHub"
 
-# -------------------------------------------------------------------
-# Step 6: Restart picframe service
-# -------------------------------------------------------------------
-"$APP_CTRL_DIR/pf_restart_svc.sh"
-log_message "Restarted picframe service"
-
-log_message "=== Promotion complete: Tag $TAG ==="
+log_message "=== Promotion complete on PC: Tag $TAG ==="
+log_message "Next step: on pi@kframe run update_picframe.sh to pull latest and restart Picframe."
 echo
