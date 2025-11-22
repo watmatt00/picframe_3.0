@@ -45,9 +45,10 @@ else
     exit 1
 fi
 
-# Fix permissions
-chmod -R 755 "$REPO_DIR"
-log_message "Permissions set."
+# Fix permissions on script files only
+find "$REPO_DIR/app_control" "$REPO_DIR/ops_tools" -type f -name "*.sh" -exec chmod 755 {} \;
+log_message "Permissions set on script files."
+
 
 # Auto-apply updated crontab if it exists
 if [ -f "$CRONTAB_FILE" ]; then
