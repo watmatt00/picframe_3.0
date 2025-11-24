@@ -6,7 +6,7 @@ set -euo pipefail
 # When run in default (quick) mode, also shows a status summary via chk_status.sh.
 
 # -------------------------------------------------------------------
-# CONFIGURATION
+# CONFIGURATION 
 # -------------------------------------------------------------------
 RCLONE_REMOTE="kfgdrive:dframe"
 LOCAL_DIR="/home/pi/Pictures/gdt_frame"
