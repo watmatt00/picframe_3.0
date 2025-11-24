@@ -1,84 +1,113 @@
 #!/bin/bash
+# chk_log_status.sh
+# Report:
+#   1. Last successful file_sync run
+#   2. Last time files were downloaded
+#   3. Last time the picframe service was restarted
+#
+# Usage: ./chk_log_status.sh [optional_log_file]
+
 set -euo pipefail
-# t_chk_sync.sh
-# Purpose: Quickly compare Google Drive folder vs. local directory using file counts by default.
-# Use --d for a detailed rclone check.
 
-# -------------------------------------------------------------------
-# CONFIGURATION
-# -------------------------------------------------------------------
-RCLONE_REMOTE="kfgdrive:dframe"
-LOCAL_DIR="/home/pi/Pictures/gdt_frame"
-RCLONE_OPTS="--one-way --log-level NOTICE"
+LOG_FILE="${1:-$HOME/logs/frame_sync.log}"
 
-# -------------------------------------------------------------------
-# FUNCTIONS
-# -------------------------------------------------------------------
-print_header() {
-    echo
-    echo "--------------------------------------------"
-    echo "   Google Drive vs Local Directory Check"
-    echo "--------------------------------------------"
-    echo
-    echo -e "\e[33mTIP:\e[0m Run with \e[32m--d\e[0m for detailed mismatch report."
-    echo
-}
-
-print_footer() {
-    echo ""
-    echo "--------------------------------------------"
-    echo "End of Difference Report"
-    echo "--------------------------------------------"
-}
-
-quick_check() {
-    echo "Performing quick file count comparison..."
-    remote_count=$(rclone lsf "$RCLONE_REMOTE" --files-only | wc -l)
-    local_count=$(find "$LOCAL_DIR" -type f | wc -l)
-
-    echo "Remote file count: $remote_count"
-    echo "Local  file count: $local_count"
-
-    if [ "$remote_count" -eq "$local_count" ]; then
-        echo "✅ Quick check: File counts match."
-    else
-        echo "⚠️ Quick check mismatch: remote=$remote_count local=$local_count"
-    fi
-}
-
-detailed_check() {
-    echo "Performing detailed rclone check (may take several minutes)..."
-    set +e
-    OUTPUT=$(rclone check "$RCLONE_REMOTE" "$LOCAL_DIR" $RCLONE_OPTS 2>&1)
-    RESULT=$?
-    set -e
-
-    echo "$OUTPUT" | grep -v -E "matching files|INFO  :" || true
-
-    if echo "$OUTPUT" | grep -q "Failed to create file system"; then
-        echo "❌ Rclone remote '$RCLONE_REMOTE' not found. Verify with:  rclone listremotes"
-    elif [ $RESULT -eq 0 ]; then
-        echo "✅ All files match between remote and local directory."
-    else
-        echo "⚠️ Differences detected — review logs or rerun with higher verbosity for details."
-    fi
-}
-
-# -------------------------------------------------------------------
-# MAIN SCRIPT
-# -------------------------------------------------------------------
-clear
-print_header
-
-default_mode=true
-if [[ "${1:-}" == "--d" ]]; then
-    default_mode=false
+if [[ ! -f "$LOG_FILE" ]]; then
+    echo "Log file not found: $LOG_FILE" >&2
+    exit 1
 fi
 
-if $default_mode; then
-    quick_check
+############################################
+# Grab last relevant log lines
+############################################
+
+# 1) Last SUCCESSFUL file_sync run
+#    Success = SYNC_RESULT: OK or SYNC_RESULT: RESTART
+last_success_line="$(
+    grep -E 'SYNC_RESULT: (OK|RESTART)' "$LOG_FILE" | tail -n 1 || true
+)"
+
+# 2) Last time files were downloaded (i.e., rclone sync actually ran and finished)
+#    This message is written by perform_sync() on success:
+#      log_message "rclone sync completed successfully."
+last_download_line="$(
+    grep 'rclone sync completed successfully.' "$LOG_FILE" | tail -n 1 || true
+)"
+
+# 3) Last time service was successfully restarted
+#    From restart_picframe_service():
+#      log_message "Service restarted successfully."
+last_restart_line="$(
+    grep 'Service restarted successfully.' "$LOG_FILE" | tail -n 1 || true
+)"
+
+echo "Log file: $LOG_FILE"
+echo "----------------------------------------"
+
+############################################
+# 1. Check: Last SUCCESSFUL file_sync run
+############################################
+echo
+echo "--------------------------------------------"
+echo "   Check Last Successful file_sync Run"
+echo "--------------------------------------------"
+echo
+
+if [[ -n "$last_success_line" ]]; then
+    # Format: "YYYY-MM-DD HH:MM:SS frame_sync.sh [MODE] - SYNC_RESULT: ..."
+    success_time="$(awk '{print $1, $2}' <<< "$last_success_line")"
+    success_source="$(awk '{print $3}' <<< "$last_success_line")"
+
+    echo "Last successful file_sync run:"
+    echo "  Time:   $success_time"
+    echo "  Source: $success_source"
+    echo "  Line:   $last_success_line"
 else
-    detailed_check
+    echo "Last successful file_sync run:"
+    echo "  No entries found matching: SYNC_RESULT: OK or RESTART"
 fi
 
-print_footer
+############################################
+# 2. Check: Last File Download
+############################################
+echo
+echo "--------------------------------------------"
+echo "   Check Last File Download"
+echo "--------------------------------------------"
+echo
+
+if [[ -n "$last_download_line" ]]; then
+    # Format: "YYYY-MM-DD HH:MM:SS frame_sync.sh [MODE] - rclone sync completed successfully."
+    download_time="$(awk '{print $1, $2}' <<< "$last_download_line")"
+    download_source="$(awk '{print $3}' <<< "$last_download_line")"
+
+    echo "Last file download (rclone sync completed):"
+    echo "  Time:   $download_time"
+    echo "  Source: $download_source"
+    echo "  Line:   $last_download_line"
+else
+    echo "Last file download:"
+    echo "  No entries found matching: rclone sync completed successfully."
+fi
+
+############################################
+# 3. Check: Last Service Restart
+############################################
+echo
+echo "--------------------------------------------"
+echo "   Check Restart"
+echo "--------------------------------------------"
+echo
+
+if [[ -n "$last_restart_line" ]]; then
+    # Format: "YYYY-MM-DD HH:MM:SS frame_sync.sh [MODE] - Service restarted successfully."
+    last_restart_time="$(awk '{print $1, $2}' <<< "$last_restart_line")"
+    last_restart_source="$(awk '{print $3}' <<< "$last_restart_line")"
+
+    echo "Last service restart (picframe.service):"
+    echo "  Time:   $last_restart_time"
+    echo "  Source: $last_restart_source"
+    echo "  Line:   $last_restart_line"
+else
+    echo "Last service restart (picframe.service):"
+    echo "  No entries found matching: Service restarted successfully."
+fi

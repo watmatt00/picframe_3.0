@@ -13,7 +13,7 @@ if [[ ! -f "$LOG_FILE" ]]; then
 fi
 
 # 1. Last time file_sync ran (start of frame_sync.sh)
-last_sync_run_line="$(grep -E 'frame_sync\.sh - ===== Starting' "$LOG_FILE" | tail -n 1 || true)"
+last_sync_run_line="$(grep -E 'SYNC_RESULT: OK' "$LOG_FILE" | tail -n 1 || true)"
 
 # 2. Last time files were downloaded (based on a known marker)
 # Adjust pattern if your logs use something else
@@ -22,6 +22,7 @@ last_download_line="$(grep -E 'FILES_DOWNLOADED:' "$LOG_FILE" | tail -n 1 || tru
 # 3. Last service restart line
 last_restart_line="$(grep -Ei 'restart.*picframe\.service' "$LOG_FILE" | tail -n 1 || true)"
 
+clear
 echo "Log file: $LOG_FILE"
 echo "----------------------------------------"
 
