@@ -21,27 +21,20 @@ fi
 ############################################
 
 # 1) Last SUCCESSFUL file_sync run
-#    Success = SYNC_RESULT: OK or SYNC_RESULT: RESTART
 last_success_line="$(
     grep -E 'SYNC_RESULT: (OK|RESTART)' "$LOG_FILE" | tail -n 1 || true
 )"
 
 # 2) Last time files were downloaded
-#    From perform_sync():
-#      log_message "rclone sync completed successfully."
 last_download_line="$(
     grep 'rclone sync completed successfully.' "$LOG_FILE" | tail -n 1 || true
 )"
 
 # 3) Last time service was successfully restarted
-#    Could be from frame_sync.sh or pf_restart_svc.sh:
-#      "Service restarted successfully."
-#      "Service picframe.service restarted successfully"
 last_restart_line="$(
     grep -E 'Service( picframe\.service)? restarted successfully' "$LOG_FILE" | tail -n 1 || true
 )"
 
-clear
 echo "Log file: $LOG_FILE"
 echo "----------------------------------------"
 
@@ -55,7 +48,6 @@ echo "--------------------------------------------"
 echo
 
 if [[ -n "$last_success_line" ]]; then
-    # Format: "YYYY-MM-DD HH:MM:SS frame_sync.sh [MODE] - SYNC_RESULT: ..."
     success_time="$(awk '{print $1, $2}' <<< "$last_success_line")"
     success_source="$(awk '{print $3}' <<< "$last_success_line")"
 
@@ -78,7 +70,6 @@ echo "--------------------------------------------"
 echo
 
 if [[ -n "$last_download_line" ]]; then
-    # Format: "YYYY-MM-DD HH:MM:SS frame_sync.sh [MODE] - rclone sync completed successfully."
     download_time="$(awk '{print $1, $2}' <<< "$last_download_line")"
     download_source="$(awk '{print $3}' <<< "$last_download_line")"
 
@@ -101,7 +92,6 @@ echo "--------------------------------------------"
 echo
 
 if [[ -n "$last_restart_line" ]]; then
-    # Format: "YYYY-MM-DD HH:MM:SS <script> [MODE?] - Service ... restarted successfully"
     last_restart_time="$(awk '{print $1, $2}' <<< "$last_restart_line")"
     last_restart_source="$(awk '{print $3}' <<< "$last_restart_line")"
 
