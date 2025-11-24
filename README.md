@@ -110,51 +110,6 @@ tracks the last 3 `SYNC_RESULT:` entries for the current day.
 
 This makes SAFE_MODE both automatic and self-documenting in the log.
 
----
-
-## 🧱 Cron Wrapper — frame_sync_cron.sh
-
-Scheduled runs should **not** call `frame_sync.sh` directly.  
-Instead, `app_control/frame_sync_cron.sh` is used as a lightweight wrapper.
-
-Responsibilities:
-
-- Checks for the SAFE_MODE flag: `ops_tools/frame_sync.disabled`
-- If the flag exists:
-  - Logs that sync is disabled.
-  - Exits without running `frame_sync.sh`.
-- If no flag exists:
-  - Calls the production sync script.
-
-Example contents of **`app_control/frame_sync_cron.sh`**:
-
-```bash
-#!/bin/bash
-
-DISABLE_FILE="$HOME/picframe_3.0/ops_tools/frame_sync.disabled"
-LOG_DIR="$HOME/logs"
-LOG_FILE="$LOG_DIR/frame_sync_$(date +%Y-%m-%d).log"
-
-mkdir -p "$LOG_DIR"
-
-# If disabled, log and exit quietly
-if [ -f "$DISABLE_FILE" ]; then
-    echo "$(date '+%Y-%m-%d %H:%M:%S') frame_sync_cron.sh - Frame sync disabled via $DISABLE_FILE; skipping frame_sync.sh" >>"$LOG_FILE"
-    exit 0
-fi
-
-# Otherwise run the main sync script
-/home/pi/picframe_3.0/ops_tools/frame_sync.sh
-```
-
-Suggested cron entry (every 15 minutes):
-
-```cron
-*/15 * * * * /home/pi/picframe_3.0/app_control/frame_sync_cron.sh
-```
-
----
-
 ## 🧑‍💻 Manual Override of SAFE_MODE
 
 When you run `frame_sync.sh` manually in a terminal:
@@ -185,6 +140,44 @@ cd ~/picframe_3.0/ops_tools
 
 This allows SAFE_MODE to be bypassed intentionally only when you are present.
 
+---
+
+## 🔍 chk_sync.sh — Manual Sync Verification & Status Report
+
+`chk_sync.sh` is the production sync verification tool.  
+It now performs:
+
+### 1. Quick File Count Comparison
+- Remote: `kfgdrive:dframe`
+- Local:  `~/Pictures/gdt_frame`
+
+### 2. Embedded Log Status Summary
+Calls `chk_status.sh` to display:
+- Last successful sync
+- Last file download
+- Last service restart
+
+---
+
+## 🧱 Cron Wrapper — frame_sync_cron.sh
+
+Scheduled runs should **not** call `frame_sync.sh` directly.  
+Instead, `app_control/frame_sync_cron.sh` is used as a lightweight wrapper.
+
+Responsibilities:
+
+- Checks for the SAFE_MODE flag: `ops_tools/frame_sync.disabled`
+- If the flag exists:
+  - Logs that sync is disabled.
+  - Exits without running `frame_sync.sh`.
+- If no flag exists:
+  - Calls the production sync script.
+
+Suggested cron entry (every 15 minutes):
+
+```cron
+*/15 * * * * /home/pi/picframe_3.0/app_control/frame_sync_cron.sh
+```
 ---
 
 ## 🧪 Test Scripts — t_frame_sync.sh & t_chk_sync.sh
