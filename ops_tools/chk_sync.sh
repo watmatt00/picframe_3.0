@@ -1,9 +1,18 @@
 #!/bin/bash
 set -euo pipefail
-# t_chk_sync.sh
+# chk_sync.sh / t_chk_sync.sh
 # Purpose: Quickly compare Google Drive folder vs. local directory using file counts by default.
 # Use --d for a detailed rclone check.
 # When run in default (quick) mode, also shows a status summary via chk_status.sh.
+
+# -------------------------------------------------------------------
+# TTY / ENV SAFETY
+# -------------------------------------------------------------------
+# IS_TTY=1 when stdout is a real terminal, 0 otherwise (e.g. systemd / Flask)
+IS_TTY=0
+if [[ -t 1 ]]; then
+    IS_TTY=1
+fi
 
 # -------------------------------------------------------------------
 # CONFIGURATION 
@@ -23,13 +32,25 @@ STATUS_SCRIPT="$SCRIPT_DIR/chk_status.sh"
 # FUNCTIONS
 # -------------------------------------------------------------------
 print_header() {
-    clear
+    # Only clear the screen if we have a real terminal
+    if [[ "$IS_TTY" -eq 1 ]]; then
+        clear
+    fi
+
     echo
     echo "--------------------------------------------"
     echo "   Google Drive vs Local Directory Check"
     echo "--------------------------------------------"
     echo
-    echo -e "\e[33mTIP:\e[0m Run with \e[32m--d\e[0m for detailed mismatch report."
+
+    if [[ "$IS_TTY" -eq 1 ]]; then
+        # Colored tip when running interactively
+        echo -e "\e[33mTIP:\e[0m Run with \e[32m--d\e[0m for detailed mismatch report."
+    else
+        # Plain text tip when running non-interactively (e.g. from web UI)
+        echo "TIP: Run with --d for detailed mismatch report."
+    fi
+
     echo
 }
 
@@ -64,47 +85,4 @@ detailed_check() {
 
     echo "$OUTPUT" | grep -v -E "matching files|INFO  :" || true
 
-    if echo "$OUTPUT" | grep -q "Failed to create file system"; then
-        echo "❌ Rclone remote '$RCLONE_REMOTE' not found. Verify with:  rclone listremotes"
-    elif [ $RESULT -eq 0 ]; then
-        echo "✅ All files match between remote and local directory."
-    else
-        echo "⚠️ Differences detected — review logs or rerun with higher verbosity for details."
-    fi
-}
-
-show_status_summary() {
-    if [[ -x "$STATUS_SCRIPT" ]]; then
-        "$STATUS_SCRIPT" "$LOG_FILE" || {
-            echo "WARNING: chk_status.sh returned a non-zero exit code." >&2
-        }
-    else
-        echo "NOTE: chk_status.sh not found or not executable at:" >&2
-        echo "      $STATUS_SCRIPT" >&2
-        echo "      Skipping status summary." >&2
-    fi
-}
-
-# -------------------------------------------------------------------
-# MAIN SCRIPT
-# -------------------------------------------------------------------
-print_header
-
-default_mode=true
-if [[ "${1:-}" == "--d" ]]; then
-    default_mode=false
-fi
-
-if $default_mode; then
-    quick_check
-
-    echo
-    echo "===== Log status summary (via chk_status.sh) ====="
-    echo
-
-    show_status_summary
-else
-    detailed_check
-fi
-
-print_footer
+    if echo "
