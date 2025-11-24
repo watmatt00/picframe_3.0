@@ -1,5 +1,5 @@
 #!/bin/bash
-# chk_log_status.sh
+# chk_status.sh
 # Report:
 #   1. Last successful file_sync run
 #   2. Last time files were downloaded
@@ -27,7 +27,7 @@ last_success_line="$(
 )"
 
 # 2) Last time files were downloaded (i.e., rclone sync actually ran and finished)
-#    This message is written by perform_sync() on success:
+#    From perform_sync():
 #      log_message "rclone sync completed successfully."
 last_download_line="$(
     grep 'rclone sync completed successfully.' "$LOG_FILE" | tail -n 1 || true
