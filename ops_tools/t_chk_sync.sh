@@ -69,4 +69,42 @@ detailed_check() {
     elif [ $RESULT -eq 0 ]; then
         echo "✅ All files match between remote and local directory."
     else
-        echo "⚠️ Differences detected — review logs or rerun with higher verbosity for
+        echo "⚠️ Differences detected — review logs or rerun with higher verbosity for details."
+    fi
+}
+
+show_status_summary() {
+    if [[ -x "$STATUS_SCRIPT" ]]; then
+        "$STATUS_SCRIPT" "$LOG_FILE" || {
+            echo "WARNING: chk_status.sh returned a non-zero exit code." >&2
+        }
+    else
+        echo "NOTE: chk_status.sh not found or not executable at:" >&2
+        echo "      $STATUS_SCRIPT" >&2
+        echo "      Skipping status summary." >&2
+    fi
+}
+
+# -------------------------------------------------------------------
+# MAIN SCRIPT
+# -------------------------------------------------------------------
+print_header
+
+default_mode=true
+if [[ "${1:-}" == "--d" ]]; then
+    default_mode=false
+fi
+
+if $default_mode; then
+    quick_check
+
+    echo
+    echo "===== Log status summary (via chk_status.sh) ====="
+    echo
+
+    show_status_summary
+else
+    detailed_check
+fi
+
+print_footer
