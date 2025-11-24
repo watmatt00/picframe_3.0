@@ -3,27 +3,18 @@ set -euo pipefail
 # t_chk_sync.sh
 # Purpose: Quickly compare Google Drive folder vs. local directory using file counts by default.
 # Use --d for a detailed rclone check.
-# When run in default (quick) mode, also shows a status summary via chk_status.sh.
 
 # -------------------------------------------------------------------
-# CONFIGURATION 
+# CONFIGURATION
 # -------------------------------------------------------------------
 RCLONE_REMOTE="kfgdrive:dframe"
 LOCAL_DIR="/home/pi/Pictures/gdt_frame"
 RCLONE_OPTS="--one-way --log-level NOTICE"
 
-# Log file used by chk_status.sh
-LOG_FILE="${LOG_FILE:-$HOME/logs/frame_sync.log}"
-
-# Locate chk_status.sh in the same directory as this script
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-STATUS_SCRIPT="$SCRIPT_DIR/chk_status.sh"
-
 # -------------------------------------------------------------------
 # FUNCTIONS
 # -------------------------------------------------------------------
 print_header() {
-    clear
     echo
     echo "--------------------------------------------"
     echo "   Google Drive vs Local Directory Check"
@@ -34,9 +25,9 @@ print_header() {
 }
 
 print_footer() {
-    echo
+    echo ""
     echo "--------------------------------------------"
-    echo "End of Google Drive vs Local Directory Check"
+    echo "End of Difference Report"
     echo "--------------------------------------------"
 }
 
@@ -73,21 +64,10 @@ detailed_check() {
     fi
 }
 
-show_status_summary() {
-    if [[ -x "$STATUS_SCRIPT" ]]; then
-        "$STATUS_SCRIPT" "$LOG_FILE" || {
-            echo "WARNING: chk_status.sh returned a non-zero exit code." >&2
-        }
-    else
-        echo "NOTE: chk_status.sh not found or not executable at:" >&2
-        echo "      $STATUS_SCRIPT" >&2
-        echo "      Skipping status summary." >&2
-    fi
-}
-
 # -------------------------------------------------------------------
 # MAIN SCRIPT
 # -------------------------------------------------------------------
+clear
 print_header
 
 default_mode=true
@@ -97,12 +77,6 @@ fi
 
 if $default_mode; then
     quick_check
-
-    echo
-    echo "===== Log status summary (via chk_status.sh) ====="
-    echo
-
-    show_status_summary
 else
     detailed_check
 fi
