@@ -20,6 +20,7 @@ picframe_3.0/
 │
 ├── ops_tools/
 │   ├── frame_sync.sh           # Main operational sync script (SAFE_MODE + auto-disable)
+│   ├── chk_status.sh           # Manual status verification tool
 │   ├── chk_sync.sh             # Manual sync verification / diff tool
 │   ├── t_frame_sync.sh         # Test/Beta version of frame_sync.sh
 │   ├── t_chk_sync.sh           # Test/Beta version of chk_sync.sh
@@ -46,6 +47,7 @@ picframe_3.0/
 | Stop picframe service | `bash ~/picframe_3.0/app_control/pf_stop_svc.sh` |
 | Restart picframe service | `bash ~/picframe_3.0/app_control/pf_restart_svc.sh` |
 | Check sync status | `bash ~/picframe_3.0/ops_tools/chk_sync.sh` |
+| Check status | `bash ~/picframe_3.0/ops_tools/chk_status.sh` |
 | Manual sync run | `bash ~/picframe_3.0/ops_tools/frame_sync.sh` |
 | Update repository & restart | `bash ~/picframe_3.0/ops_tools/update_picframe.sh` |
 | Promote test scripts to prod | `bash ~/picframe_3.0/ops_tools/promote_to_prod.sh` |
