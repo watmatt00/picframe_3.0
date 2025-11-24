@@ -341,9 +341,9 @@ DASHBOARD_HTML = """
             </div>
             <div class="controls" style="margin-bottom:0.5rem;">
                 <button id="btnRefresh" type="button">↻ Refresh from log</button>
-                <button id="btnRunCheck" type="button">▶ Run detailed chk_sync</button>
+                <button id="btnRunCheck" type="button">▶ Run chk_sync.sh --d</button>
                 <span class="note">
-                    Log-only view · chk_sync.sh runs only when requested.
+                    Log-only view · chk_sync.sh --d runs only when requested.
                 </span>
             </div>
 
@@ -362,7 +362,7 @@ DASHBOARD_HTML = """
                 </div>
             </div>
             <div style="margin-top:0.6rem;">
-                <div class="meta">Last chk_sync output:</div>
+                <div class="meta">chk_sync.sh --d output:</div>
                 <pre id="checkOutput">(not run yet)</pre>
             </div>
         </div>
@@ -480,12 +480,12 @@ function refreshStatus() {
 function runCheck() {
     const btn = document.getElementById('btnRunCheck');
     btn.disabled = true;
-    btn.textContent = 'Running chk_sync…';
+    btn.textContent = 'Running chk_sync.sh --d…';
     fetch('/api/run-check')
         .then(r => r.json())
         .then(data => {
             const out = [];
-            out.push('# chk_sync.sh run');
+            out.push('# chk_sync.sh --d run');
             out.push('Exit code: ' + data.exit_code);
             if (data.stdout) {
                 out.push('');
@@ -505,7 +505,7 @@ function runCheck() {
         })
         .finally(() => {
             btn.disabled = false;
-            btn.textContent = '▶ Run detailed chk_sync';
+            btn.textContent = '▶ Run chk_sync.sh --d';
         });
 }
 
@@ -702,8 +702,9 @@ def api_run_check():
             }
         )
     try:
+        # run chk_sync.sh --d for detailed mode
         result = subprocess.run(
-            [str(CHK_SCRIPT)],
+            [str(CHK_SCRIPT), "--d"],
             capture_output=True,
             text=True,
             check=False,
