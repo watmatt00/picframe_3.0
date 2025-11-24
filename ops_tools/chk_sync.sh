@@ -2,10 +2,10 @@
 # chk_status.sh
 # Report:
 #   1. Last successful file_sync run
-#   2. Last time files were downloaded
+#   2. Last time files were downloaded (rclone sync completed)
 #   3. Last time the picframe service was restarted
 #
-# Usage: ./chk_log_status.sh [optional_log_file]
+# Usage: ./chk_status.sh [optional_log_file]
 
 set -euo pipefail
 
@@ -26,7 +26,7 @@ last_success_line="$(
     grep -E 'SYNC_RESULT: (OK|RESTART)' "$LOG_FILE" | tail -n 1 || true
 )"
 
-# 2) Last time files were downloaded (i.e., rclone sync actually ran and finished)
+# 2) Last time files were downloaded
 #    From perform_sync():
 #      log_message "rclone sync completed successfully."
 last_download_line="$(
@@ -34,10 +34,11 @@ last_download_line="$(
 )"
 
 # 3) Last time service was successfully restarted
-#    From restart_picframe_service():
-#      log_message "Service restarted successfully."
+#    Could be from frame_sync.sh or pf_restart_svc.sh:
+#      "Service restarted successfully."
+#      "Service picframe.service restarted successfully"
 last_restart_line="$(
-    grep 'Service restarted successfully.' "$LOG_FILE" | tail -n 1 || true
+    grep -E 'Service( picframe\.service)? restarted successfully' "$LOG_FILE" | tail -n 1 || true
 )"
 
 echo "Log file: $LOG_FILE"
@@ -99,7 +100,7 @@ echo "--------------------------------------------"
 echo
 
 if [[ -n "$last_restart_line" ]]; then
-    # Format: "YYYY-MM-DD HH:MM:SS frame_sync.sh [MODE] - Service restarted successfully."
+    # Format: "YYYY-MM-DD HH:MM:SS <script> [MODE?] - Service ... restarted successfully"
     last_restart_time="$(awk '{print $1, $2}' <<< "$last_restart_line")"
     last_restart_source="$(awk '{print $3}' <<< "$last_restart_line")"
 
@@ -109,5 +110,5 @@ if [[ -n "$last_restart_line" ]]; then
     echo "  Line:   $last_restart_line"
 else
     echo "Last service restart (picframe.service):"
-    echo "  No entries found matching: Service restarted successfully."
+    echo "  No entries found matching: Service* restarted successfully."
 fi
