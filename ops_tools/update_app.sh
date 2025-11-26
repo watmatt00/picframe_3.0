@@ -2,16 +2,23 @@
 set -euo pipefail
 
 # -------------------------------------------------------------------
-# update_picframe.sh
+# update_app.sh
 # Purpose: Pull latest updates from GitHub, refresh crontab, and
-#          restart the picframe service on the Pi.
+#          restart both the picframe service and the dashboard service.
 #
 # Run as: pi@kframe (never with sudo)
 # -------------------------------------------------------------------
 
 LOG_FILE="$HOME/logs/frame_sync.log"
 REPO_DIR="$HOME/picframe_3.0"
-RESTART_SCRIPT="$REPO_DIR/app_control/pf_restart_svc.sh"
+
+# Picframe restart script
+RESTART_PF="$REPO_DIR/app_control/pf_restart_svc.sh"
+
+# Dashboard restart script (ADD THIS FILE)
+RESTART_DASHBOARD="$REPO_DIR/app_control/pf_restart_dashboard.sh"
+
+# Crontab source file
 CRONTAB_FILE="$REPO_DIR/app_control/crontab"
 
 # -------------------------------------------------------------------
@@ -20,7 +27,7 @@ CRONTAB_FILE="$REPO_DIR/app_control/crontab"
 
 # 1) Don't allow root
 if [[ $EUID -eq 0 ]]; then
-  echo "ERROR: Do not run update_picframe.sh as root. Use the 'pi' user." >&2
+  echo "ERROR: Do not run update_app.sh as root. Use the 'pi' user." >&2
   exit 1
 fi
 
@@ -36,10 +43,10 @@ fi
 # Simple logger
 log_message() {
   local message="$1"
-  echo "$(date '+%Y-%m-%d %H:%M:%S') update_picframe.sh - $message" | tee -a "$LOG_FILE" >&2
+  echo "$(date '+%Y-%m-%d %H:%M:%S') update_app.sh - $message" | tee -a "$LOG_FILE" >&2
 }
 
-log_message "===== Starting picframe update ====="
+log_message "===== Starting app update ====="
 
 # -------------------------------------------------------------------
 # Ensure repo exists and is owned by the current user
@@ -64,7 +71,7 @@ cd "$REPO_DIR"
 
 log_message "Checking for local changes..."
 if ! git diff --quiet || ! git diff --cached --quiet; then
-  log_message "Local changes detected. Aborting update to avoid losing work."
+  log_message "Local changes detected. Aborting update to prevent data loss."
   exit 1
 fi
 
@@ -80,7 +87,7 @@ if ! git rebase origin/main >> "$LOG_FILE" 2>&1; then
   exit 1
 fi
 
-log_message "Git pull (fetch + rebase) completed successfully."
+log_message "Git update (fetch + rebase) completed successfully."
 
 # -------------------------------------------------------------------
 # Refresh crontab
@@ -95,23 +102,39 @@ if [[ -f "$CRONTAB_FILE" ]]; then
     exit 1
   fi
 else
-  log_message "Crontab file not found at $CRONTAB_FILE (skipping crontab update)."
+  log_message "Crontab file not found at $CRONTAB_FILE (skipping)."
 fi
 
 # -------------------------------------------------------------------
 # Restart picframe service
 # -------------------------------------------------------------------
 
-if [[ -x "$RESTART_SCRIPT" ]]; then
-  log_message "Restarting picframe service via $RESTART_SCRIPT..."
-  if "$RESTART_SCRIPT"; then
+if [[ -x "$RESTART_PF" ]]; then
+  log_message "Restarting picframe service via $RESTART_PF..."
+  if "$RESTART_PF"; then
     log_message "Picframe service restart completed."
   else
     log_message "Picframe service restart FAILED."
     exit 1
   fi
 else
-  log_message "Restart script $RESTART_SCRIPT not found or not executable."
+  log_message "Picframe restart script not found or not executable."
 fi
 
-log_message "===== Picframe update completed successfully ====="
+# -------------------------------------------------------------------
+# Restart dashboard service
+# -------------------------------------------------------------------
+
+if [[ -x "$RESTART_DASHBOARD" ]]; then
+  log_message "Restarting dashboard service via $RESTART_DASHBOARD..."
+  if "$RESTART_DASHBOARD"; then
+    log_message "Dashboard service restart completed."
+  else
+    log_message "Dashboard service restart FAILED."
+    exit 1
+  fi
+else
+  log_message "Dashboard restart script not found or not executable."
+fi
+
+log_message "===== App update completed successfully ====="
