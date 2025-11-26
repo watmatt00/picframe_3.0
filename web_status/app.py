@@ -125,7 +125,7 @@ DASHBOARD_HTML = """
         }
         .traffic-container {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             gap: 1.5rem;
         }
         .traffic {
@@ -178,7 +178,7 @@ DASHBOARD_HTML = """
         .chip-err { background:#7f1d1d; color:#fecaca; }
         .metrics {
             display: grid;
-            grid-template-columns: repeat(3, minmax(0,1fr));
+            grid-template-columns: repeat(2, minmax(0,1fr));
             gap: 0.65rem;
             margin-top: 0.9rem;
         }
@@ -224,6 +224,7 @@ DASHBOARD_HTML = """
             color: #9ca3af;
             text-transform: uppercase;
             letter-spacing: 0.08em;
+            min-width: 9.5rem;
         }
         .svc-indicator {
             display: inline-flex;
@@ -373,10 +374,6 @@ DASHBOARD_HTML = """
                             <div class="metric-label">Local count</div>
                             <div id="lCount" class="metric-value mono">—</div>
                         </div>
-                        <div class="metric">
-                            <div class="metric-label">Match status</div>
-                            <div id="matchStatus" class="metric-value mono">—</div>
-                        </div>
                     </div>
 
                     <div class="svc-lines">
@@ -416,7 +413,7 @@ DASHBOARD_HTML = """
             </div>
 
             <div class="metric" style="margin:0.75rem 0 0.4rem;">
-                <div class="metric-label">Service restart</div>
+                <div class="metric-label">Last Service Restart</div>
                 <div id="lastRestart" class="metric-value mono">—</div>
             </div>
 
@@ -489,16 +486,6 @@ function applyBanner(level, headline, label, updatedAt) {
     document.getElementById('lastUpdated').textContent = 'Updated: ' + (updatedAt || '—');
 }
 
-function updateMatchStatus(g, l) {
-    const m = document.getElementById("matchStatus");
-
-    if (g === null || l === null || g === undefined || l === undefined) {
-        m.textContent = "NO DATA";
-        return;
-    }
-    m.textContent = (g === l) ? "MATCH (✔)" : "MISMATCH (✖)";
-}
-
 function applyServiceStatus(dotId, textId, level, label) {
     const dot = document.getElementById(dotId);
     const text = document.getElementById(textId);
@@ -541,10 +528,6 @@ function refreshStatus() {
             applyStatusLights(level);
             applyStatusChip(level, data.status_label || '');
             applyBanner(level, data.status_headline, data.status_label, data.generated_at);
-
-            const g = (typeof data.google_count === "number") ? data.google_count : parseInt(data.google_count, 10);
-            const l = (typeof data.local_count === "number") ? data.local_count : parseInt(data.local_count, 10);
-            updateMatchStatus(isNaN(g) ? null : g, isNaN(l) ? null : l);
 
             const webLevel = data.web_status_level || 'warn';
             const webLabel = data.web_status_label || 'UNKNOWN';

@@ -13,16 +13,16 @@ promotion, and Git-based updates.
 picframe_3.0/
 ├── app_control/
 │   ├── crontab                 # Template crontab (deployed by update_picframe.sh)
-│   ├── pf_start_svc.sh
-│   ├── pf_stop_svc.sh
-│   ├── pf_restart_svc.sh
+│   ├── pf_start_svc.sh         # Start picframe service
+│   ├── pf_stop_svc.sh          # Stop picframe service
+│   ├── pf_restart_svc.sh       # Restart picframe service
 │   ├── frame_sync_cron.sh      # Cron wrapper for scheduled frame_sync.sh runs
-│   ├── pf_web_start_svc.sh        # Start web status dashboard (pf-web-status.service)
-│   ├── pf_web_stop_svc.sh         # Stop web status dashboard
-│   └── pf_web_restart_svc.sh      # Restart web status dashboard
+│   ├── pf_web_start_svc.sh     # Start web status dashboard (pf-web-status.service)
+│   ├── pf_web_stop_svc.sh      # Stop web status dashboard
+│   └── pf_web_restart_svc.sh   # Restart web status dashboard
 │
 ├── web_status/
-│   └── app.py                     # Flask app for PicFrame web status dashboard (port 5050)
+│   └── app.py                  # Flask app for PicFrame web status dashboard (port 5050)
 │
 ├── ops_tools/
 │   ├── frame_sync.sh           # Main operational sync script (SAFE_MODE + auto-disable)
@@ -31,7 +31,7 @@ picframe_3.0/
 │   ├── t_frame_sync.sh         # Test/Beta version of frame_sync.sh
 │   ├── t_chk_sync.sh           # Test/Beta version of chk_sync.sh
 │   ├── promote_to_prod.sh      # Promote t_* scripts into production
-│   └── update_app.sh        # Pulls updates, refreshes crontab, restarts picframe and flask services
+│   └── update_app.sh           # Pulls updates, refreshes crontab, restarts picframe and flask services
 │
 └── README.md
 ```
@@ -264,7 +264,8 @@ Typical responsibilities:
 - Run `git sync` to pull from GitHub and push any committed local changes.
 - Apply correct execute permissions to key scripts.
 - Install `app_control/crontab` into the user's crontab.
-- Restart the PicFrame service as needed.
+- Restart the PicFrame service.
+- Restart the Flaks web service.
 
 Usage:
 
@@ -304,6 +305,9 @@ bash ~/picframe_3.0/ops_tools/update_picframe.sh
   sudo chmod 600 /home/pi/.config/rclone/rclone.conf
   ```
 
+- Dashboard hosted on port 5050:
+  - http://<ip address>:5050
+  
 ---
 
 ## 🧠 Git Shortcuts
