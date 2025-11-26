@@ -10,6 +10,7 @@ app = Flask(__name__)
 # --- Paths you may edit if needed ---
 LOG_PATH = Path("/home/pi/logs/frame_sync.log")
 CHK_SCRIPT = Path("/home/pi/picframe_3.0/ops_tools/chk_sync.sh")
+WEB_SERVICE_NAME = "pf-web-status.service"
 # ------------------------------------
 
 DASHBOARD_HTML = """
@@ -204,6 +205,36 @@ DASHBOARD_HTML = """
         .metric-value.mono {
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
         }
+        .web-svc-line {
+            margin-top: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .web-svc-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .status-dot {
+            width: 0.65rem;
+            height: 0.65rem;
+            border-radius: 999px;
+            background: #4b5563;
+            box-shadow: 0 0 0 1px #020617;
+        }
+        .dot-ok {
+            background: radial-gradient(circle at 30% 20%, #bbf7d0, #22c55e);
+            box-shadow: 0 0 10px #22c55e;
+        }
+        .dot-warn {
+            background: radial-gradient(circle at 30% 20%, #fef3c7, #facc15);
+            box-shadow: 0 0 10px #facc15;
+        }
+        .dot-err {
+            background: radial-gradient(circle at 30% 20%, #fecaca, #ef4444);
+            box-shadow: 0 0 10px #ef4444;
+        }
         pre {
             margin: 0.4rem 0 0;
             padding: 0.7rem 0.8rem;
@@ -333,6 +364,15 @@ DASHBOARD_HTML = """
                             <div id="matchStatus" class="metric-value mono">—</div>
                         </div>
                     </div>
+
+                    <div class="web-svc-line">
+                        <div class="metric-label">Web status service</div>
+                        <div class="web-svc-indicator">
+                            <span id="webSvcDot" class="status-dot"></span>
+                            <span id="webSvcText" class="metric-value">CHECKING…</span>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -431,6 +471,22 @@ function updateMatchStatus(g, l) {
     m.textContent = (g === l) ? "MATCH (✔)" : "MISMATCH (✖)";
 }
 
+function applyWebServiceStatus(level, label) {
+    const dot = document.getElementById('webSvcDot');
+    const text = document.getElementById('webSvcText');
+
+    dot.className = 'status-dot';
+    if (level === 'ok') {
+        dot.classList.add('dot-ok');
+    } else if (level === 'warn') {
+        dot.classList.add('dot-warn');
+    } else {
+        dot.classList.add('dot-err');
+    }
+
+    text.textContent = label || 'UNKNOWN';
+}
+
 function refreshStatus() {
     fetch('/api/status')
         .then(r => r.json())
@@ -460,12 +516,17 @@ function refreshStatus() {
             const g = (typeof data.google_count === "number") ? data.google_count : parseInt(data.google_count, 10);
             const l = (typeof data.local_count === "number") ? data.local_count : parseInt(data.local_count, 10);
             updateMatchStatus(isNaN(g) ? null : g, isNaN(l) ? null : l);
+
+            const webLevel = data.web_status_level || 'warn';
+            const webLabel = data.web_status_label || 'UNKNOWN';
+            applyWebServiceStatus(webLevel, webLabel);
         })
         .catch(err => {
             document.getElementById('logTail').textContent = 'Error loading status: ' + err;
             applyStatusLights('err');
             applyStatusChip('err', 'ERROR');
             applyBanner('err', 'Error loading status', 'ERROR', '');
+            applyWebServiceStatus('warn', 'UNKNOWN');
         });
 }
 
@@ -654,6 +715,43 @@ def parse_status_from_log():
     return data
 
 
+def get_web_service_status():
+    """Check pf-web-status.service via systemctl and return level/label/raw."""
+    info = {
+        "web_status_level": "warn",
+        "web_status_label": "UNKNOWN",
+        "web_status_raw": None,
+    }
+    try:
+        result = subprocess.run(
+            ["systemctl", "is-active", WEB_SERVICE_NAME],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        state = (result.stdout or "").strip()
+
+        if state == "active":
+            info["web_status_level"] = "ok"
+            info["web_status_label"] = "RUNNING"
+            info["web_status_raw"] = state
+        elif state in ("activating", "reloading"):
+            info["web_status_level"] = "warn"
+            info["web_status_label"] = state.upper()
+            info["web_status_raw"] = state
+        else:
+            # inactive, failed, unknown, empty, etc.
+            raw = state or (result.stderr or "").strip() or "unknown"
+            info["web_status_level"] = "err"
+            info["web_status_label"] = raw.upper()
+            info["web_status_raw"] = raw
+    except Exception as e:
+        info["web_status_level"] = "warn"
+        info["web_status_label"] = "UNKNOWN"
+        info["web_status_raw"] = str(e)
+    return info
+
+
 @app.route("/")
 def dashboard():
     hostname = socket.gethostname()
@@ -669,6 +767,7 @@ def dashboard():
 def api_status():
     status = parse_status_from_log()
     status["generated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    status.update(get_web_service_status())
     return jsonify(status)
 
 
