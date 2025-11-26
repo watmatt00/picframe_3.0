@@ -493,11 +493,11 @@ function applyServiceStatus(dotId, textId, level, label) {
 
     dot.className = 'status-dot';
     if (level === 'ok') {
-            dot.classList.add('dot-ok');
+        dot.classList.add('dot-ok');
     } else if (level === 'warn') {
-            dot.classList.add('dot-warn');
+        dot.classList.add('dot-warn');
     } else {
-            dot.classList.add('dot-err');
+        dot.classList.add('dot-err');
     }
 
     text.textContent = label || 'UNKNOWN';
@@ -510,7 +510,7 @@ function refreshStatus() {
             const level = data.level || 'err';
 
             document.getElementById('statusHeadline').textContent = data.status_headline || 'Status unknown';
-            document.getElementById('lastRun').textContent = data.status_raw || '—';
+            document.getElementById('lastRun').textContent = data.last_sync || '—';
             document.getElementById('lastRestart').textContent = data.last_restart || '—';
             document.getElementById('lastFileDownload').textContent = data.last_file_download || '—';
             document.getElementById('gCount').textContent = (data.google_count ?? '—');
@@ -643,7 +643,7 @@ def parse_status_from_log():
 
     # Tail for UI
     tail_lines = lines[-80:]
-    data["log_tail"] = "\n".join(tail_lines)
+    data["log_tail"] = "\\n".join(tail_lines)
 
     last_sync_line = None
     last_restart_line = None
