@@ -4,12 +4,13 @@ set -euo pipefail
 # -------------------------------------------------------------------
 # promote_to_prod.sh
 # Run on DEV PC (not on Pi) to:
-#   - Safely promote test scripts (t_*.sh) to production names
-#   - Archive selected prod files and prune old archives
-#   - Commit repo state, create git tag, and push to GitHub
+#   1. Archive current prod scripts with timestamp
+#   2. Copy test scripts (t_*.sh) to prod names
+#   3. Remove executable bit from archived files
+#   4. Ensure prod and test scripts are executable
+#   5. Commit + tag + push
 #
-# Pi stays read-only: it will only ever pull these changes via
-# update_picframe.sh and never commit/tag/push.
+# Logging: All promotion messages go to the main app log (frame_sync.log)
 # -------------------------------------------------------------------
 
 REPO_ROOT="$HOME/Downloads/GitHub/picframe_3.0"
@@ -17,121 +18,100 @@ OPS_DIR="$REPO_ROOT/ops_tools"
 ARCHIVE_DIR="$OPS_DIR/archive"
 LOG_FILE="$HOME/logs/frame_sync.log"
 
-# Safety: never run this on the Pi (kframe)
+TIMESTAMP="$(date '+%Y%m%d-%H%M')"
+
+# Safety: never run on the Pi
 HOSTNAME="$(hostname)"
 if [[ "$HOSTNAME" == "kframe" ]]; then
-    echo "ERROR: promote_to_prod.sh must NOT be run on Pi (kframe)."
-    echo "       Run this script on your PC repo only."
+    echo "ERROR: Do NOT run promote_to_prod.sh on the Pi." | tee -a "$LOG_FILE"
     exit 1
 fi
 
-# Scripts that should be archived & pruned
-ARCHIVE_LIST=("chk_sync.sh" "frame_sync.sh")
-
 log_message() {
-    local msg="$1"
-    echo "$(date '+%Y-%m-%d %H:%M:%S') [PROMOTE] $msg" | tee -a "$LOG_FILE"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') promote_to_prod.sh - $1" | tee -a "$LOG_FILE"
 }
 
-cd "$REPO_ROOT" || { echo "Cannot cd to $REPO_ROOT"; exit 1; }
+log_message "=== Starting promotion to production on PC ==="
+
+# Ensure archive directory exists
 mkdir -p "$ARCHIVE_DIR"
 
-log_message "=== Starting promotion to production (PC) ==="
+# Prod scripts we manage
+PROD_FILES=(
+    "chk_sync.sh"
+    "frame_sync.sh"
+)
 
-TIMESTAMP=$(date '+%Y%m%d-%H%M')
-
-# -------------------------------------------------------------------
-# SAFETY: Pre-pull to prevent divergence issues
-# -------------------------------------------------------------------
-log_message "Checking for remote changes..."
-git pull --rebase --autostash || {
-    log_message "ERROR: Unable to sync with remote repo. Aborting promotion."
-    exit 1
-}
-
-# -------------------------------------------------------------------
-# PREVIEW OF ACTIONS
-# -------------------------------------------------------------------
-echo
-echo "The following promotions will occur:"
-echo
-
-# 1. Archive actions
-echo "Archive + prune for:"
-for SCRIPT in "${ARCHIVE_LIST[@]}"; do
-    echo "  - $SCRIPT → archive with timestamp $TIMESTAMP (keep latest 10)"
-done
-echo
-
-# 2. Promotion actions
-echo "Test → Prod promotions:"
-for TFILE in "$OPS_DIR"/t_*.sh; do
-    [ -f "$TFILE" ] || continue
-    BASE=$(basename "$TFILE" | sed 's/^t_//')
-    echo "  - $(basename "$TFILE") → $BASE"
-done
-echo
+# Test versions
+TEST_FILES=(
+    "t_chk_sync.sh"
+    "t_frame_sync.sh"
+)
 
 # -------------------------------------------------------------------
-# Step 1: Archive + prune selected files
+# 1. Archive current prod scripts
 # -------------------------------------------------------------------
-for SCRIPT in "${ARCHIVE_LIST[@]}"; do
-    SRC="$OPS_DIR/$SCRIPT"
-    if [ -f "$SRC" ]; then
-        DEST="$ARCHIVE_DIR/${SCRIPT%.sh}_$TIMESTAMP.sh"
-        cp "$SRC" "$DEST"
-        chmod 644 "$DEST"
-        log_message "Archived $SCRIPT → archive/${SCRIPT%.sh}_$TIMESTAMP.sh"
+log_message "Archiving current prod files..."
 
-        FILE_PATTERN="${SCRIPT%.sh}_*.sh"
-        FILES=($(ls -1t "$ARCHIVE_DIR"/$FILE_PATTERN 2>/dev/null || true))
+for i in "${!PROD_FILES[@]}"; do
+    PROD="${OPS_DIR}/${PROD_FILES[$i]}"
+    ARCHIVE="${ARCHIVE_DIR}/${PROD_FILES[$i]%.*}_${TIMESTAMP}.sh"
 
-        if [ "${#FILES[@]}" -gt 10 ]; then
-            for ((i=10; i<${#FILES[@]}; i++)); do
-                rm -f "${FILES[$i]}"
-                log_message "Pruned old archive: $(basename "${FILES[$i]}")"
-            done
-        fi
+    if [[ -f "$PROD" ]]; then
+        # Use install to copy with known safe permissions (644)
+        install -m 644 "$PROD" "$ARCHIVE"
+        log_message "Archived $PROD → $ARCHIVE"
     else
-        log_message "WARNING: $SCRIPT missing — skipping archive"
+        log_message "WARNING: Prod file missing: $PROD"
     fi
 done
 
 # -------------------------------------------------------------------
-# Step 2: Promote test → prod (copy, keep test files)
+# 2. Copy test scripts to prod scripts
 # -------------------------------------------------------------------
-for TFILE in "$OPS_DIR"/t_*.sh; do
-    [ -f "$TFILE" ] || continue
-    BASE=$(basename "$TFILE" | sed 's/^t_//')
+log_message "Promoting test scripts to production..."
 
-    cp "$TFILE" "$OPS_DIR/$BASE"
-    chmod +x "$OPS_DIR/$BASE"
+for i in "${!TEST_FILES[@]}"; do
+    TEST="${OPS_DIR}/${TEST_FILES[$i]}"
+    PROD="${OPS_DIR}/${PROD_FILES[$i]}"
 
-    log_message "Promoted (copied) $TFILE → $BASE (test preserved)"
+    if [[ ! -f "$TEST" ]]; then
+        log_message "ERROR: Missing test script: $TEST"
+        exit 1
+    fi
+
+    # Copy and set executable bit
+    install -m 755 "$TEST" "$PROD"
+    log_message "Promoted $TEST → $PROD"
 done
 
 # -------------------------------------------------------------------
-# Step 3: Git commit repo state
+# 3. Ensure archive files are NOT executable
 # -------------------------------------------------------------------
-git add -A
-git commit -m "Production promotion on $(date '+%Y-%m-%d %H:%M')" || \
-    log_message "No changes to commit (clean repo)"
-log_message "Git commit complete"
+log_message "Removing executable bit from all archived scripts..."
+
+find "$ARCHIVE_DIR" -type f -name "*.sh" -exec chmod 644 {} \;
 
 # -------------------------------------------------------------------
-# Step 4: Git tag
+# 4. Ensure prod + test scripts ARE executable
 # -------------------------------------------------------------------
-TAG="prod-$TIMESTAMP"
-git tag -a "$TAG" -m "Promotion on $(date)"
-log_message "Created tag: $TAG"
+log_message "Ensuring all prod/test scripts are executable..."
+
+find "$OPS_DIR" -maxdepth 1 -type f -name "*.sh" -exec chmod 755 {} \;
+
+# This intentionally *does not* recurse into archive
 
 # -------------------------------------------------------------------
-# Step 5: Push
+# 5. Commit + tag + push
 # -------------------------------------------------------------------
+cd "$REPO_ROOT"
+
+log_message "Committing changes to Git..."
+
+git add .
+git commit -m "Promote to prod: $TIMESTAMP"
+git tag -f "prod-$TIMESTAMP"
 git push
-git push --tags
-log_message "Pushed commit + tag to GitHub"
+git push --tags --force
 
-log_message "=== Promotion complete on PC: Tag $TAG ==="
-log_message "Next step: on pi@kframe run update_picframe.sh to pull latest and restart Picframe."
-echo
+log_message "=== Promotion completed successfully ==="
