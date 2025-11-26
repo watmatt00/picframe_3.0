@@ -410,7 +410,7 @@ DASHBOARD_HTML = """
 
             <div class="metric" style="margin:0.75rem 0 0.4rem;">
                 <div class="metric-label">Last run</div>
-                <div id="statusRaw" class="metric-value mono">—</div>
+                <div id="lastRun" class="metric-value mono">—</div>
             </div>
 
             <div class="metric" style="margin:0.25rem 0 0.4rem;">
@@ -510,7 +510,7 @@ function refreshStatus() {
             const level = data.level || 'err';
 
             document.getElementById('statusHeadline').textContent = data.status_headline || 'Status unknown';
-            document.getElementById('statusRaw').textContent = data.status_raw || '—';
+            document.getElementById('lastRun').textContent = data.status_raw || '—';
             document.getElementById('lastRestart').textContent = data.last_restart || '—';
             document.getElementById('lastFileDownload').textContent = data.last_file_download || '—';
             document.getElementById('gCount').textContent = (data.google_count ?? '—');
