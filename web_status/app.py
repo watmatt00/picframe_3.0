@@ -415,9 +415,14 @@ DASHBOARD_HTML = """
                 </span>
             </div>
 
-            <div class="metric" style="margin:0.75rem 0 1rem;">
+            <div class="metric" style="margin:0.75rem 0 0.4rem;">
                 <div class="metric-label">Service restart</div>
                 <div id="lastRestart" class="metric-value mono">—</div>
+            </div>
+
+            <div class="metric" style="margin:0.25rem 0 1rem;">
+                <div class="metric-label">Last file download</div>
+                <div id="lastFileDownload" class="metric-value mono">—</div>
             </div>
 
             <div style="margin-top:0.5rem;">
@@ -519,6 +524,7 @@ function refreshStatus() {
             document.getElementById('statusHeadline').textContent = data.status_headline || 'Status unknown';
             document.getElementById('statusRaw').textContent = data.status_raw || '—';
             document.getElementById('lastRestart').textContent = data.last_restart || '—';
+            document.getElementById('lastFileDownload').textContent = data.last_file_download || '—';
             document.getElementById('gCount').textContent = (data.google_count ?? '—');
             document.getElementById('lCount').textContent = (data.local_count ?? '—');
 
@@ -625,6 +631,7 @@ def parse_status_from_log():
         "status_raw": None,
         "last_sync": None,
         "last_restart": None,
+        "last_file_download": None,
         "google_count": None,
         "local_count": None,
         "log_tail": None,
@@ -657,6 +664,7 @@ def parse_status_from_log():
     last_restart_line = None
     gcount_line = None
     lcount_line = None
+    last_dl_line = None
 
     for line in reversed(lines):
         if last_sync_line is None and "SYNC_RESULT:" in line:
@@ -667,7 +675,9 @@ def parse_status_from_log():
             gcount_line = line
         if lcount_line is None and "Local count" in line:
             lcount_line = line
-        if last_sync_line and gcount_line and lcount_line and last_restart_line:
+        if last_dl_line is None and "Last file download" in line:
+            last_dl_line = line
+        if last_sync_line and gcount_line and lcount_line and last_restart_line and last_dl_line:
             break
 
     def parse_count(line):
@@ -686,6 +696,7 @@ def parse_status_from_log():
     data["google_count"] = gcount
     data["local_count"] = lcount
 
+    # Last sync / raw status
     if last_sync_line:
         data["status_raw"] = last_sync_line
 
@@ -703,6 +714,7 @@ def parse_status_from_log():
     else:
         status_token = "UNKNOWN"
 
+    # Last restart
     if last_restart_line:
         ts = last_restart_line[:19]
         try:
@@ -710,6 +722,20 @@ def parse_status_from_log():
             data["last_restart"] = dt.strftime("%Y-%m-%d %H:%M:%S")
         except Exception:
             data["last_restart"] = ts.strip() or None
+
+    # Last file download (parse the time after 'Last file download')
+    if last_dl_line:
+        try:
+            # Example log fragment: "... Last file download: 2025-11-24 10:15:18"
+            after = last_dl_line.split("Last file download", 1)[1]
+            # Get everything after the next colon
+            if ":" in after:
+                time_str = after.split(":", 1)[1].strip()
+            else:
+                time_str = after.strip()
+            data["last_file_download"] = time_str or None
+        except Exception:
+            data["last_file_download"] = None
 
     status_upper = status_token.upper()
 
