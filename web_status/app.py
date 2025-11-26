@@ -7,11 +7,12 @@ from flask import Flask, jsonify, render_template_string
 
 app = Flask(__name__)
 
-# --- Paths you may edit if needed ---
+# --- Paths / service names you may edit if needed ---
 LOG_PATH = Path("/home/pi/logs/frame_sync.log")
 CHK_SCRIPT = Path("/home/pi/picframe_3.0/ops_tools/chk_sync.sh")
-WEB_SERVICE_NAME = "pf-web-status.service"
-# ------------------------------------
+WEB_SERVICE_NAME = "pf-web-status.service"   # system service
+PF_SERVICE_NAME = "picframe.service"         # user service (systemctl --user)
+# ----------------------------------------------------
 
 DASHBOARD_HTML = """
 <!doctype html>
@@ -205,14 +206,26 @@ DASHBOARD_HTML = """
         .metric-value.mono {
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
         }
-        .web-svc-line {
+        .svc-lines {
             margin-top: 0.9rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+        }
+        .svc-line {
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            font-size: 0.8rem;
         }
-        .web-svc-indicator {
-            display: flex;
+        .svc-label {
+            font-size: 0.7rem;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .svc-indicator {
+            display: inline-flex;
             align-items: center;
             gap: 0.4rem;
         }
@@ -365,11 +378,20 @@ DASHBOARD_HTML = """
                         </div>
                     </div>
 
-                    <div class="web-svc-line">
-                        <div class="metric-label">Web status service</div>
-                        <div class="web-svc-indicator">
-                            <span id="webSvcDot" class="status-dot"></span>
-                            <span id="webSvcText" class="metric-value">CHECKING…</span>
+                    <div class="svc-lines">
+                        <div class="svc-line">
+                            <span class="svc-label">Web status service</span>
+                            <span class="svc-indicator">
+                                <span id="webSvcDot" class="status-dot"></span>
+                                <span id="webSvcText" class="metric-value">CHECKING…</span>
+                            </span>
+                        </div>
+                        <div class="svc-line">
+                            <span class="svc-label">PicFrame service</span>
+                            <span class="svc-indicator">
+                                <span id="pfSvcDot" class="status-dot"></span>
+                                <span id="pfSvcText" class="metric-value">CHECKING…</span>
+                            </span>
                         </div>
                     </div>
 
@@ -471,9 +493,9 @@ function updateMatchStatus(g, l) {
     m.textContent = (g === l) ? "MATCH (✔)" : "MISMATCH (✖)";
 }
 
-function applyWebServiceStatus(level, label) {
-    const dot = document.getElementById('webSvcDot');
-    const text = document.getElementById('webSvcText');
+function applyServiceStatus(dotId, textId, level, label) {
+    const dot = document.getElementById(dotId);
+    const text = document.getElementById(textId);
 
     dot.className = 'status-dot';
     if (level === 'ok') {
@@ -519,14 +541,19 @@ function refreshStatus() {
 
             const webLevel = data.web_status_level || 'warn';
             const webLabel = data.web_status_label || 'UNKNOWN';
-            applyWebServiceStatus(webLevel, webLabel);
+            applyServiceStatus('webSvcDot', 'webSvcText', webLevel, webLabel);
+
+            const pfLevel = data.pf_status_level || 'warn';
+            const pfLabel = data.pf_status_label || 'UNKNOWN';
+            applyServiceStatus('pfSvcDot', 'pfSvcText', pfLevel, pfLabel);
         })
         .catch(err => {
             document.getElementById('logTail').textContent = 'Error loading status: ' + err;
             applyStatusLights('err');
             applyStatusChip('err', 'ERROR');
             applyBanner('err', 'Error loading status', 'ERROR', '');
-            applyWebServiceStatus('warn', 'UNKNOWN');
+            applyServiceStatus('webSvcDot', 'webSvcText', 'warn', 'UNKNOWN');
+            applyServiceStatus('pfSvcDot', 'pfSvcText', 'warn', 'UNKNOWN');
         });
 }
 
@@ -740,7 +767,6 @@ def get_web_service_status():
             info["web_status_label"] = state.upper()
             info["web_status_raw"] = state
         else:
-            # inactive, failed, unknown, empty, etc.
             raw = state or (result.stderr or "").strip() or "unknown"
             info["web_status_level"] = "err"
             info["web_status_label"] = raw.upper()
@@ -749,6 +775,42 @@ def get_web_service_status():
         info["web_status_level"] = "warn"
         info["web_status_label"] = "UNKNOWN"
         info["web_status_raw"] = str(e)
+    return info
+
+
+def get_picframe_service_status():
+    """Check picframe.service (user unit) via systemctl --user."""
+    info = {
+        "pf_status_level": "warn",
+        "pf_status_label": "UNKNOWN",
+        "pf_status_raw": None,
+    }
+    try:
+        result = subprocess.run(
+            ["systemctl", "--user", "is-active", PF_SERVICE_NAME],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        state = (result.stdout or "").strip()
+
+        if state == "active":
+            info["pf_status_level"] = "ok"
+            info["pf_status_label"] = "RUNNING"
+            info["pf_status_raw"] = state
+        elif state in ("activating", "reloading"):
+            info["pf_status_level"] = "warn"
+            info["pf_status_label"] = state.upper()
+            info["pf_status_raw"] = state
+        else:
+            raw = state or (result.stderr or "").strip() or "unknown"
+            info["pf_status_level"] = "err"
+            info["pf_status_label"] = raw.upper()
+            info["pf_status_raw"] = raw
+    except Exception as e:
+        info["pf_status_level"] = "warn"
+        info["pf_status_label"] = "UNKNOWN"
+        info["pf_status_raw"] = str(e)
     return info
 
 
@@ -768,6 +830,7 @@ def api_status():
     status = parse_status_from_log()
     status["generated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     status.update(get_web_service_status())
+    status.update(get_picframe_service_status())
     return jsonify(status)
 
 
