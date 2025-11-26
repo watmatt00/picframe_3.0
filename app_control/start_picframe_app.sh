@@ -9,10 +9,10 @@ log_message() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') start_picframe_app.sh  - $message" | tee -a "$LOG_FILE" >&2
 }
 
-log_message "Starting picframe app"
-
 # Make sure logs directory exists
 mkdir -p "$(dirname "$LOG_FILE")"
+
+log_message "Starting picframe app"
 
 # Configure display power and screensaver; don't crash if xset fails
 if ! xset -display :0 dpms 0 0 0 &>/dev/null; then
@@ -35,7 +35,7 @@ fi
 # Confirm picframe is on PATH
 if ! command -v picframe >/dev/null 2>&1; then
     log_message "ERROR: 'picframe' command not found in venv PATH."
-    log_message "       Try reinstalling picframe inside the venv."
+    log_message "       Run: source /home/pi/venv_picframe/bin/activate && pip install picframe"
     exit 1
 fi
 
