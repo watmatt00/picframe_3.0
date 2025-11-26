@@ -657,6 +657,7 @@ def parse_status_from_log():
         data["log_tail"] = "(log file is empty)"
         return data
 
+    # Tail for UI
     tail_lines = lines[-80:]
     data["log_tail"] = "\n".join(tail_lines)
 
@@ -664,7 +665,7 @@ def parse_status_from_log():
     last_restart_line = None
     gcount_line = None
     lcount_line = None
-    last_dl_line = None
+    last_dl_line = None  # last "rclone sync completed successfully." line
 
     for line in reversed(lines):
         if last_sync_line is None and "SYNC_RESULT:" in line:
@@ -675,9 +676,9 @@ def parse_status_from_log():
             gcount_line = line
         if lcount_line is None and "Local count" in line:
             lcount_line = line
-        if last_dl_line is None and "Last file download" in line:
+        if last_dl_line is None and "rclone sync completed successfully." in line:
             last_dl_line = line
-        if last_sync_line and gcount_line and lcount_line and last_restart_line and last_dl_line:
+        if last_sync_line and last_restart_line and gcount_line and lcount_line and last_dl_line:
             break
 
     def parse_count(line):
@@ -696,17 +697,15 @@ def parse_status_from_log():
     data["google_count"] = gcount
     data["local_count"] = lcount
 
-    # Last sync / raw status
+    # Last sync
     if last_sync_line:
         data["status_raw"] = last_sync_line
-
         ts = last_sync_line[:19]
         try:
             dt = datetime.fromisoformat(ts.replace(" ", "T"))
             data["last_sync"] = dt.strftime("%Y-%m-%d %H:%M:%S")
         except Exception:
             data["last_sync"] = ts.strip() or None
-
         try:
             status_token = last_sync_line.split("SYNC_RESULT:")[1].strip()
         except IndexError:
@@ -723,20 +722,18 @@ def parse_status_from_log():
         except Exception:
             data["last_restart"] = ts.strip() or None
 
-    # Last file download (parse the time after 'Last file download')
+    # Last file download: from last "rclone sync completed successfully." line
+    # Example:
+    # 2025-11-24 10:15:18 frame_sync.sh [PROD] - rclone sync completed successfully.
     if last_dl_line:
+        ts = last_dl_line[:19]
         try:
-            # Example log fragment: "... Last file download: 2025-11-24 10:15:18"
-            after = last_dl_line.split("Last file download", 1)[1]
-            # Get everything after the next colon
-            if ":" in after:
-                time_str = after.split(":", 1)[1].strip()
-            else:
-                time_str = after.strip()
-            data["last_file_download"] = time_str or None
+            dt = datetime.fromisoformat(ts.replace(" ", "T"))
+            data["last_file_download"] = dt.strftime("%Y-%m-%d %H:%M:%S")
         except Exception:
-            data["last_file_download"] = None
+            data["last_file_download"] = ts.strip() or None
 
+    # Overall status level/label/headline
     status_upper = status_token.upper()
 
     if gcount is not None and lcount is not None:
@@ -806,12 +803,7 @@ def get_web_service_status():
 
 
 def get_picframe_service_status():
-    """Check picframe.service (user unit) via systemctl --user.
-
-    We set XDG_RUNTIME_DIR so systemctl can talk to the user manager,
-    and if we still can't connect to the bus we show a WARN/UNKNOWN
-    instead of a giant error blob.
-    """
+    """Check picframe.service (user unit) via systemctl --user."""
     info = {
         "pf_status_level": "warn",
         "pf_status_label": "UNKNOWN",
@@ -831,7 +823,6 @@ def get_picframe_service_status():
         state = (result.stdout or "").strip()
         err = (result.stderr or "").strip()
 
-        # If we couldn't talk to the bus, don't scream in the UI.
         if not state and "Failed to connect to bus" in err:
             info["pf_status_level"] = "warn"
             info["pf_status_label"] = "UNKNOWN"
@@ -851,7 +842,6 @@ def get_picframe_service_status():
             info["pf_status_label"] = state.upper()
             info["pf_status_raw"] = state
         else:
-            # No stdout state; use stderr if present
             if err:
                 info["pf_status_level"] = "err"
                 info["pf_status_label"] = "ERROR"
