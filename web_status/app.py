@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import subprocess
 import socket
 from pathlib import Path
@@ -779,20 +780,37 @@ def get_web_service_status():
 
 
 def get_picframe_service_status():
-    """Check picframe.service (user unit) via systemctl --user."""
+    """Check picframe.service (user unit) via systemctl --user.
+
+    We set XDG_RUNTIME_DIR so systemctl can talk to the user manager,
+    and if we still can't connect to the bus we show a WARN/UNKNOWN
+    instead of a giant error blob.
+    """
     info = {
         "pf_status_level": "warn",
         "pf_status_label": "UNKNOWN",
         "pf_status_raw": None,
     }
     try:
+        env = os.environ.copy()
+        env.setdefault("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+
         result = subprocess.run(
             ["systemctl", "--user", "is-active", PF_SERVICE_NAME],
             capture_output=True,
             text=True,
             check=False,
+            env=env,
         )
         state = (result.stdout or "").strip()
+        err = (result.stderr or "").strip()
+
+        # If we couldn't talk to the bus, don't scream in the UI.
+        if not state and "Failed to connect to bus" in err:
+            info["pf_status_level"] = "warn"
+            info["pf_status_label"] = "UNKNOWN"
+            info["pf_status_raw"] = err
+            return info
 
         if state == "active":
             info["pf_status_level"] = "ok"
@@ -802,15 +820,25 @@ def get_picframe_service_status():
             info["pf_status_level"] = "warn"
             info["pf_status_label"] = state.upper()
             info["pf_status_raw"] = state
-        else:
-            raw = state or (result.stderr or "").strip() or "unknown"
+        elif state:
             info["pf_status_level"] = "err"
-            info["pf_status_label"] = raw.upper()
-            info["pf_status_raw"] = raw
+            info["pf_status_label"] = state.upper()
+            info["pf_status_raw"] = state
+        else:
+            # No stdout state; use stderr if present
+            if err:
+                info["pf_status_level"] = "err"
+                info["pf_status_label"] = "ERROR"
+                info["pf_status_raw"] = err
+            else:
+                info["pf_status_level"] = "warn"
+                info["pf_status_label"] = "UNKNOWN"
+                info["pf_status_raw"] = "no state returned"
     except Exception as e:
         info["pf_status_level"] = "warn"
         info["pf_status_label"] = "UNKNOWN"
         info["pf_status_raw"] = str(e)
+
     return info
 
 
