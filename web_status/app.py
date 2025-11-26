@@ -657,7 +657,6 @@ def parse_status_from_log():
         data["log_tail"] = "(log file is empty)"
         return data
 
-    # last ~80 lines for the log tail viewer
     tail_lines = lines[-80:]
     data["log_tail"] = "\n".join(tail_lines)
 
@@ -665,7 +664,7 @@ def parse_status_from_log():
     last_restart_line = None
     gcount_line = None
     lcount_line = None
-    last_dl_line = None  # last "rclone sync completed successfully." line
+    last_dl_line = None
 
     for line in reversed(lines):
         if last_sync_line is None and "SYNC_RESULT:" in line:
@@ -676,9 +675,9 @@ def parse_status_from_log():
             gcount_line = line
         if lcount_line is None and "Local count" in line:
             lcount_line = line
-        if last_dl_line is None and "rclone sync completed successfully." in line:
+        if last_dl_line is None and "Last file download" in line:
             last_dl_line = line
-        if last_sync_line and last_restart_line and gcount_line and lcount_line and last_dl_line:
+        if last_sync_line and gcount_line and lcount_line and last_restart_line and last_dl_line:
             break
 
     def parse_count(line):
@@ -697,9 +696,7 @@ def parse_status_from_log():
     data["google_count"] = gcount
     data["local_count"] = lcount
 
-    # ----------------------
     # Last sync / raw status
-    # ----------------------
     if last_sync_line:
         data["status_raw"] = last_sync_line
 
@@ -717,9 +714,7 @@ def parse_status_from_log():
     else:
         status_token = "UNKNOWN"
 
-    # ----------------------
-    # Last restart time
-    # ----------------------
+    # Last restart
     if last_restart_line:
         ts = last_restart_line[:19]
         try:
@@ -728,14 +723,199 @@ def parse_status_from_log():
         except Exception:
             data["last_restart"] = ts.strip() or None
 
-    # ----------------------
-    # Last file download time (same logic as chk_sync.sh)
-    # We look for the last "rclone sync completed successfully." line
-    # e.g.:
-    # 2025-11-24 10:15:18 frame_sync.sh [PROD] - rclone sync completed successfully.
-    # ----------------------
+    # Last file download (parse the time after 'Last file download')
     if last_dl_line:
         try:
-            ts = last_dl_line[:19]
-            dt = datetime.fromisoformat(ts.replace(" ", "T"))
-            data["last_file_download"] = dt.strftime("%Y-%m-%d %H:%M:%S")
+            # Example log fragment: "... Last file download: 2025-11-24 10:15:18"
+            after = last_dl_line.split("Last file download", 1)[1]
+            # Get everything after the next colon
+            if ":" in after:
+                time_str = after.split(":", 1)[1].strip()
+            else:
+                time_str = after.strip()
+            data["last_file_download"] = time_str or None
+        except Exception:
+            data["last_file_download"] = None
+
+    status_upper = status_token.upper()
+
+    if gcount is not None and lcount is not None:
+        if gcount == lcount:
+            data["level"] = "ok"
+            data["status_label"] = "MATCH"
+            data["status_headline"] = "Counts match"
+        else:
+            data["level"] = "err"
+            data["status_label"] = "MISMATCH"
+            data["status_headline"] = "Counts do not match"
+    else:
+        if "OK" in status_upper and "RESTART" not in status_upper:
+            data["level"] = "ok"
+            data["status_label"] = "OK"
+            data["status_headline"] = "Sync is healthy"
+        elif "RESTART" in status_upper or "WARN" in status_upper:
+            data["level"] = "warn"
+            data["status_label"] = "RESTART NEEDED"
+            data["status_headline"] = "Attention required"
+        elif "ERROR" in status_upper or "FAIL" in status_upper:
+            data["level"] = "err"
+            data["status_headline"] = "Sync errors detected"
+            data["status_label"] = "ERROR"
+        else:
+            data["level"] = "warn"
+            data["status_label"] = status_upper or "UNKNOWN"
+            data["status_headline"] = "Status unclear"
+
+    return data
+
+
+def get_web_service_status():
+    """Check pf-web-status.service via systemctl and return level/label/raw."""
+    info = {
+        "web_status_level": "warn",
+        "web_status_label": "UNKNOWN",
+        "web_status_raw": None,
+    }
+    try:
+        result = subprocess.run(
+            ["systemctl", "is-active", WEB_SERVICE_NAME],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        state = (result.stdout or "").strip()
+
+        if state == "active":
+            info["web_status_level"] = "ok"
+            info["web_status_label"] = "RUNNING"
+            info["web_status_raw"] = state
+        elif state in ("activating", "reloading"):
+            info["web_status_level"] = "warn"
+            info["web_status_label"] = state.upper()
+            info["web_status_raw"] = state
+        else:
+            raw = state or (result.stderr or "").strip() or "unknown"
+            info["web_status_level"] = "err"
+            info["web_status_label"] = raw.upper()
+            info["web_status_raw"] = raw
+    except Exception as e:
+        info["web_status_level"] = "warn"
+        info["web_status_label"] = "UNKNOWN"
+        info["web_status_raw"] = str(e)
+    return info
+
+
+def get_picframe_service_status():
+    """Check picframe.service (user unit) via systemctl --user.
+
+    We set XDG_RUNTIME_DIR so systemctl can talk to the user manager,
+    and if we still can't connect to the bus we show a WARN/UNKNOWN
+    instead of a giant error blob.
+    """
+    info = {
+        "pf_status_level": "warn",
+        "pf_status_label": "UNKNOWN",
+        "pf_status_raw": None,
+    }
+    try:
+        env = os.environ.copy()
+        env.setdefault("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+
+        result = subprocess.run(
+            ["systemctl", "--user", "is-active", PF_SERVICE_NAME],
+            capture_output=True,
+            text=True,
+            check=False,
+            env=env,
+        )
+        state = (result.stdout or "").strip()
+        err = (result.stderr or "").strip()
+
+        # If we couldn't talk to the bus, don't scream in the UI.
+        if not state and "Failed to connect to bus" in err:
+            info["pf_status_level"] = "warn"
+            info["pf_status_label"] = "UNKNOWN"
+            info["pf_status_raw"] = err
+            return info
+
+        if state == "active":
+            info["pf_status_level"] = "ok"
+            info["pf_status_label"] = "RUNNING"
+            info["pf_status_raw"] = state
+        elif state in ("activating", "reloading"):
+            info["pf_status_level"] = "warn"
+            info["pf_status_label"] = state.upper()
+            info["pf_status_raw"] = state
+        elif state:
+            info["pf_status_level"] = "err"
+            info["pf_status_label"] = state.upper()
+            info["pf_status_raw"] = state
+        else:
+            # No stdout state; use stderr if present
+            if err:
+                info["pf_status_level"] = "err"
+                info["pf_status_label"] = "ERROR"
+                info["pf_status_raw"] = err
+            else:
+                info["pf_status_level"] = "warn"
+                info["pf_status_label"] = "UNKNOWN"
+                info["pf_status_raw"] = "no state returned"
+    except Exception as e:
+        info["pf_status_level"] = "warn"
+        info["pf_status_label"] = "UNKNOWN"
+        info["pf_status_raw"] = str(e)
+
+    return info
+
+
+@app.route("/")
+def dashboard():
+    hostname = socket.gethostname()
+    return render_template_string(
+        DASHBOARD_HTML,
+        hostname=hostname,
+        script_path=str(CHK_SCRIPT),
+        log_path=str(LOG_PATH),
+    )
+
+
+@app.route("/api/status")
+def api_status():
+    status = parse_status_from_log()
+    status["generated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    status.update(get_web_service_status())
+    status.update(get_picframe_service_status())
+    return jsonify(status)
+
+
+@app.route("/api/run-check")
+def api_run_check():
+    if not CHK_SCRIPT.exists():
+        return jsonify({
+            "exit_code": -1,
+            "stdout": "",
+            "stderr": f"chk_sync.sh not found at {CHK_SCRIPT}",
+        })
+
+    try:
+        result = subprocess.run(
+            [str(CHK_SCRIPT), "--d"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        return jsonify({
+            "exit_code": result.returncode,
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+        })
+    except Exception as e:
+        return jsonify({
+            "exit_code": -1,
+            "stdout": "",
+            "stderr": str(e),
+        })
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5050)
