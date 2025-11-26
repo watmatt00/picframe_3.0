@@ -178,13 +178,13 @@ DASHBOARD_HTML = """
         .chip-err { background:#7f1d1d; color:#fecaca; }
         .metrics {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0,1fr));
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 0.65rem;
             margin-top: 0.9rem;
         }
         @media (max-width: 700px) {
             .metrics {
-                grid-template-columns: repeat(2, minmax(0,1fr));
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             }
         }
         .metric {
@@ -361,10 +361,6 @@ DASHBOARD_HTML = """
                         <span id="statusChip" class="status-chip chip-err" style="display:none;"></span>
                     </div>
 
-                    <div class="meta" style="margin-top:0.35rem;">
-                        Last run: <span id="statusRaw">—</span>
-                    </div>
-
                     <div class="metrics">
                         <div class="metric">
                             <div class="metric-label">Google count</div>
@@ -413,6 +409,11 @@ DASHBOARD_HTML = """
             </div>
 
             <div class="metric" style="margin:0.75rem 0 0.4rem;">
+                <div class="metric-label">Last run</div>
+                <div id="statusRaw" class="metric-value mono">—</div>
+            </div>
+
+            <div class="metric" style="margin:0.25rem 0 0.4rem;">
                 <div class="metric-label">Last Service Restart</div>
                 <div id="lastRestart" class="metric-value mono">—</div>
             </div>
@@ -492,11 +493,11 @@ function applyServiceStatus(dotId, textId, level, label) {
 
     dot.className = 'status-dot';
     if (level === 'ok') {
-        dot.classList.add('dot-ok');
+            dot.classList.add('dot-ok');
     } else if (level === 'warn') {
-        dot.classList.add('dot-warn');
+            dot.classList.add('dot-warn');
     } else {
-        dot.classList.add('dot-err');
+            dot.classList.add('dot-err');
     }
 
     text.textContent = label || 'UNKNOWN';
@@ -706,8 +707,6 @@ def parse_status_from_log():
             data["last_restart"] = ts.strip() or None
 
     # Last file download: from last "rclone sync completed successfully." line
-    # Example:
-    # 2025-11-24 10:15:18 frame_sync.sh [PROD] - rclone sync completed successfully.
     if last_dl_line:
         ts = last_dl_line[:19]
         try:
@@ -750,7 +749,6 @@ def parse_status_from_log():
 
 
 def get_web_service_status():
-    """Check pf-web-status.service via systemctl and return level/label/raw."""
     info = {
         "web_status_level": "warn",
         "web_status_label": "UNKNOWN",
@@ -786,7 +784,6 @@ def get_web_service_status():
 
 
 def get_picframe_service_status():
-    """Check picframe.service (user unit) via systemctl --user."""
     info = {
         "pf_status_level": "warn",
         "pf_status_label": "UNKNOWN",
