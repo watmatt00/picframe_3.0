@@ -294,27 +294,31 @@ DASHBOARD_HTML = """
     </div>
 
     <div class="grid">
-        <!-- LEFT: Summary / traffic light -->
+
+        <!-- LEFT: Summary -->
         <div class="card">
             <div class="card-title">
                 Overall status
                 <span id="statusLabelChip" class="pill"><span>Status:</span> <strong id="statusLabelText">—</strong></span>
             </div>
+
             <div class="traffic-container">
                 <div class="traffic">
                     <div id="lightRed" class="light"></div>
                     <div id="lightYellow" class="light"></div>
                     <div id="lightGreen" class="light"></div>
                 </div>
+
                 <div>
                     <div class="status-text-main">
                         <span id="statusHeadline">Waiting for data…</span>
                         <span id="statusChip" class="status-chip chip-err" style="display:none;"></span>
                     </div>
+
                     <div class="meta" style="margin-top:0.35rem;">
-                        Last sync result: <span id="statusRaw">—</span><br>
-                        Last sync timestamp: <span id="lastSync">—</span>
+                        Last run: <span id="statusRaw">—</span>
                     </div>
+
                     <div class="metrics">
                         <div class="metric">
                             <div class="metric-label">Google count</div>
@@ -333,12 +337,13 @@ DASHBOARD_HTML = """
             </div>
         </div>
 
-        <!-- RIGHT: log + detailed check -->
+        <!-- RIGHT: tools -->
         <div class="card">
             <div class="card-title">
                 Activity & tools
                 <span>Uses log; chk_sync on demand</span>
             </div>
+
             <div class="controls" style="margin-bottom:0.5rem;">
                 <button id="btnRefresh" type="button">↻ Refresh from log</button>
                 <button id="btnRunCheck" type="button">▶ Run chk_sync.sh --d</button>
@@ -361,11 +366,13 @@ DASHBOARD_HTML = """
                     <pre id="logTail">Loading…</pre>
                 </div>
             </div>
+
             <div style="margin-top:0.6rem;">
                 <div class="meta">chk_sync.sh --d output:</div>
                 <pre id="checkOutput">(not run yet)</pre>
             </div>
         </div>
+
     </div>
 
     <div class="footer">
@@ -396,25 +403,19 @@ function applyStatusChip(level, label) {
     chip.style.display = 'inline-flex';
     chip.textContent = label || '';
     chip.className = 'status-chip';
-    if (level === 'ok') {
-        chip.classList.add('chip-ok');
-    } else if (level === 'warn') {
-        chip.classList.add('chip-warn');
-    } else {
-        chip.classList.add('chip-err');
-    }
+    if (level === 'ok')      chip.classList.add('chip-ok');
+    else if (level === 'warn') chip.classList.add('chip-warn');
+    else                       chip.classList.add('chip-err');
 }
 
 function applyBanner(level, headline, label, updatedAt) {
     const banner = document.getElementById('statusBanner');
     banner.className = 'banner';
-    if (level === 'ok') {
-        banner.classList.add('banner-ok');
-    } else if (level === 'warn') {
-        banner.classList.add('banner-warn');
-    } else {
-        banner.classList.add('banner-err');
-    }
+
+    if (level === 'ok') banner.classList.add('banner-ok');
+    else if (level === 'warn') banner.classList.add('banner-warn');
+    else banner.classList.add('banner-err');
+
     document.getElementById('bannerHeadline').textContent = headline || 'Sync status';
     document.getElementById('bannerLabel').textContent = label || '';
     document.getElementById('lastUpdated').textContent = 'Updated: ' + (updatedAt || '—');
@@ -427,12 +428,7 @@ function updateMatchStatus(g, l) {
         m.textContent = "NO DATA";
         return;
     }
-
-    if (g === l) {
-        m.textContent = "MATCH (✔)";
-    } else {
-        m.textContent = "MISMATCH (✖)";
-    }
+    m.textContent = (g === l) ? "MATCH (✔)" : "MISMATCH (✖)";
 }
 
 function refreshStatus() {
@@ -443,21 +439,17 @@ function refreshStatus() {
 
             document.getElementById('statusHeadline').textContent = data.status_headline || 'Status unknown';
             document.getElementById('statusRaw').textContent = data.status_raw || '—';
-            document.getElementById('lastSync').textContent = data.last_sync || '—';
             document.getElementById('lastRestart').textContent = data.last_restart || '—';
             document.getElementById('gCount').textContent = (data.google_count ?? '—');
             document.getElementById('lCount').textContent = (data.local_count ?? '—');
 
             document.getElementById('statusLabelText').textContent = data.status_label || '—';
+
             const labelChip = document.getElementById('statusLabelChip');
             labelChip.className = 'pill';
-            if (level === 'ok') {
-                labelChip.style.borderColor = '#22c55e';
-            } else if (level === 'warn') {
-                labelChip.style.borderColor = '#facc15';
-            } else if (level === 'err') {
-                labelChip.style.borderColor = '#ef4444';
-            }
+            if (level === 'ok')      labelChip.style.borderColor = '#22c55e';
+            else if (level === 'warn') labelChip.style.borderColor = '#facc15';
+            else                      labelChip.style.borderColor = '#ef4444';
 
             document.getElementById('logTail').textContent = data.log_tail || '(log is empty or missing)';
 
@@ -481,12 +473,14 @@ function runCheck() {
     const btn = document.getElementById('btnRunCheck');
     btn.disabled = true;
     btn.textContent = 'Running chk_sync.sh --d…';
+
     fetch('/api/run-check')
         .then(r => r.json())
         .then(data => {
             const out = [];
             out.push('# chk_sync.sh --d run');
             out.push('Exit code: ' + data.exit_code);
+
             if (data.stdout) {
                 out.push('');
                 out.push('[stdout]');
@@ -497,6 +491,7 @@ function runCheck() {
                 out.push('[stderr]');
                 out.push(data.stderr);
             }
+
             document.getElementById('checkOutput').textContent = out.join('\\n');
             refreshStatus();
         })
@@ -513,6 +508,7 @@ function setupLogToggle() {
     const toggle = document.getElementById('logToggle');
     const section = document.getElementById('logSection');
     let open = false;
+
     toggle.addEventListener('click', () => {
         open = !open;
         section.style.display = open ? 'block' : 'none';
@@ -533,16 +529,6 @@ document.addEventListener('DOMContentLoaded', () => {
 """
 
 def parse_status_from_log():
-    """
-    Read the frame_sync.log and derive:
-      - google/local counts
-      - last sync line (SYNC_RESULT)
-      - last restart line
-      - match status drives green/red:
-          * MATCH -> level 'ok'
-          * MISMATCH -> level 'err'
-      - fallback to SYNC_RESULT if counts missing
-    """
     data = {
         "level": "err",
         "status_label": "NO DATA",
@@ -575,7 +561,6 @@ def parse_status_from_log():
         data["log_tail"] = "(log file is empty)"
         return data
 
-    # tail for display
     tail_lines = lines[-80:]
     data["log_tail"] = "\n".join(tail_lines)
 
@@ -596,7 +581,6 @@ def parse_status_from_log():
         if last_sync_line and gcount_line and lcount_line and last_restart_line:
             break
 
-    # parse helper for counts
     def parse_count(line):
         if not line:
             return None
@@ -613,9 +597,9 @@ def parse_status_from_log():
     data["google_count"] = gcount
     data["local_count"] = lcount
 
-    # parse last sync line + timestamp
     if last_sync_line:
         data["status_raw"] = last_sync_line
+
         ts = last_sync_line[:19]
         try:
             dt = datetime.fromisoformat(ts.replace(" ", "T"))
@@ -630,7 +614,6 @@ def parse_status_from_log():
     else:
         status_token = "UNKNOWN"
 
-    # parse restart timestamp if any
     if last_restart_line:
         ts = last_restart_line[:19]
         try:
@@ -641,7 +624,6 @@ def parse_status_from_log():
 
     status_upper = status_token.upper()
 
-    # main rule: counts drive green/red when present
     if gcount is not None and lcount is not None:
         if gcount == lcount:
             data["level"] = "ok"
@@ -652,7 +634,6 @@ def parse_status_from_log():
             data["status_label"] = "MISMATCH"
             data["status_headline"] = "Counts do not match"
     else:
-        # fallback to SYNC_RESULT if we don't have both counts
         if "OK" in status_upper and "RESTART" not in status_upper:
             data["level"] = "ok"
             data["status_label"] = "OK"
@@ -663,8 +644,8 @@ def parse_status_from_log():
             data["status_headline"] = "Attention required"
         elif "ERROR" in status_upper or "FAIL" in status_upper:
             data["level"] = "err"
-            data["status_label"] = "ERROR"
             data["status_headline"] = "Sync errors detected"
+            data["status_label"] = "ERROR"
         else:
             data["level"] = "warn"
             data["status_label"] = status_upper or "UNKNOWN"
@@ -694,36 +675,30 @@ def api_status():
 @app.route("/api/run-check")
 def api_run_check():
     if not CHK_SCRIPT.exists():
-        return jsonify(
-            {
-                "exit_code": -1,
-                "stdout": "",
-                "stderr": f"chk_sync.sh not found at {CHK_SCRIPT}",
-            }
-        )
+        return jsonify({
+            "exit_code": -1,
+            "stdout": "",
+            "stderr": f"chk_sync.sh not found at {CHK_SCRIPT}",
+        })
+
     try:
-        # run chk_sync.sh --d for detailed mode
         result = subprocess.run(
             [str(CHK_SCRIPT), "--d"],
             capture_output=True,
             text=True,
             check=False,
         )
-        return jsonify(
-            {
-                "exit_code": result.returncode,
-                "stdout": result.stdout,
-                "stderr": result.stderr,
-            }
-        )
+        return jsonify({
+            "exit_code": result.returncode,
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+        })
     except Exception as e:
-        return jsonify(
-            {
-                "exit_code": -1,
-                "stdout": "",
-                "stderr": str(e),
-            }
-        )
+        return jsonify({
+            "exit_code": -1,
+            "stdout": "",
+            "stderr": str(e),
+        })
 
 
 if __name__ == "__main__":
