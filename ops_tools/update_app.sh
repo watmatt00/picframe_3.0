@@ -1,140 +1,78 @@
 #!/bin/bash
 set -euo pipefail
 
-# -------------------------------------------------------------------
-# update_app.sh
-# Purpose: Pull latest updates from GitHub, refresh crontab, and
-#          restart both the picframe service and the dashboard service.
-#
-# Run as: pi@kframe (never with sudo)
-# -------------------------------------------------------------------
-
 LOG_FILE="$HOME/logs/frame_sync.log"
 REPO_DIR="$HOME/picframe_3.0"
-
-# Picframe restart script
-RESTART_PF="$REPO_DIR/app_control/pf_restart_svc.sh"
-
-# Dashboard restart script (ADD THIS FILE)
-RESTART_DASHBOARD="$REPO_DIR/app_control/pf_restart_dashboard.sh"
-
-# Crontab source file
 CRONTAB_FILE="$REPO_DIR/app_control/crontab"
+PF_RESTART="$REPO_DIR/app_control/pf_restart_svc.sh"
+DASHBOARD_RESTART="$REPO_DIR/app_control/pf_web_restart_svc.sh"
 
-# -------------------------------------------------------------------
-# Safety checks
-# -------------------------------------------------------------------
-
-# 1) Don't allow root
-if [[ $EUID -eq 0 ]]; then
-  echo "ERROR: Do not run update_app.sh as root. Use the 'pi' user." >&2
-  exit 1
-fi
-
-# 2) Ensure log directory is present and writable
-LOG_DIR="$(dirname "$LOG_FILE")"
-mkdir -p "$LOG_DIR"
-
-if [[ ! -w "$LOG_DIR" ]]; then
-  echo "ERROR: Log directory $LOG_DIR is not writable by user $USER." >&2
-  exit 1
-fi
-
-# Simple logger
 log_message() {
-  local message="$1"
-  echo "$(date '+%Y-%m-%d %H:%M:%S') update_app.sh - $message" | tee -a "$LOG_FILE" >&2
+    local message="$1"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') update_app.sh - $message" | tee -a "$LOG_FILE" >&2
 }
 
 log_message "===== Starting app update ====="
 
-# -------------------------------------------------------------------
-# Ensure repo exists and is owned by the current user
-# -------------------------------------------------------------------
-
+# Ensure repo exists
 if [[ ! -d "$REPO_DIR/.git" ]]; then
-  log_message "Repository not found at $REPO_DIR"
-  exit 1
-fi
-
-# Optional: warn if any files are not owned by the current user
-if find "$REPO_DIR" ! -user "$USER" -print -quit | grep -q .; then
-  log_message "WARNING: Some files in $REPO_DIR are not owned by $USER. Consider fixing with:"
-  log_message "         sudo chown -R $USER:$USER $REPO_DIR"
+    log_message "Repository not found at $REPO_DIR (.git missing). Aborting."
+    exit 1
 fi
 
 cd "$REPO_DIR"
 
-# -------------------------------------------------------------------
-# Git update (no aliases, no magic)
-# -------------------------------------------------------------------
-
+# Check for local changes
 log_message "Checking for local changes..."
-if ! git diff --quiet || ! git diff --cached --quiet; then
-  log_message "Local changes detected. Aborting update to prevent data loss."
-  exit 1
+if git status --porcelain | grep -q .; then
+    log_message "Local changes detected. Please commit or stash before running update_app.sh."
+    exit 1
 fi
 
+# Fetch + rebase from origin/main
 log_message "Fetching latest changes from origin/main..."
-if ! git fetch origin main >> "$LOG_FILE" 2>&1; then
-  log_message "Git fetch failed. See log for details."
-  exit 1
-fi
+git fetch origin main >>"$LOG_FILE" 2>&1
 
 log_message "Rebasing onto origin/main..."
-if ! git rebase origin/main >> "$LOG_FILE" 2>&1; then
-  log_message "Git rebase failed. See log for details."
-  exit 1
-fi
+git rebase origin/main >>"$LOG_FILE" 2>&1
 
 log_message "Git update (fetch + rebase) completed successfully."
 
-# -------------------------------------------------------------------
-# Refresh crontab
-# -------------------------------------------------------------------
-
+# Update user crontab
+log_message "Updating user crontab from $CRONTAB_FILE..."
 if [[ -f "$CRONTAB_FILE" ]]; then
-  log_message "Updating user crontab from $CRONTAB_FILE..."
-  if crontab "$CRONTAB_FILE"; then
-    log_message "Crontab updated successfully."
-  else
-    log_message "Failed to update crontab."
-    exit 1
-  fi
+    if crontab "$CRONTAB_FILE"; then
+        log_message "Crontab updated successfully."
+    else
+        log_message "Failed to update crontab from $CRONTAB_FILE."
+    fi
 else
-  log_message "Crontab file not found at $CRONTAB_FILE (skipping)."
+    log_message "Crontab file not found at $CRONTAB_FILE. Skipping crontab update."
 fi
 
-# -------------------------------------------------------------------
-# Restart picframe service
-# -------------------------------------------------------------------
-
-if [[ -x "$RESTART_PF" ]]; then
-  log_message "Restarting picframe service via $RESTART_PF..."
-  if "$RESTART_PF"; then
-    log_message "Picframe service restart completed."
-  else
-    log_message "Picframe service restart FAILED."
-    exit 1
-  fi
+# Restart picframe slideshow service (user service wrapper)
+if [[ -x "$PF_RESTART" ]]; then
+    log_message "Restarting picframe service via $PF_RESTART..."
+    if "$PF_RESTART"; then
+        log_message "Picframe service restart completed."
+    else
+        log_message "Picframe restart script returned non-zero exit code."
+    fi
 else
-  log_message "Picframe restart script not found or not executable."
+    log_message "Picframe restart script not found or not executable."
 fi
 
-# -------------------------------------------------------------------
-# Restart dashboard service
-# -------------------------------------------------------------------
-
-if [[ -x "$RESTART_DASHBOARD" ]]; then
-  log_message "Restarting dashboard service via $RESTART_DASHBOARD..."
-  if "$RESTART_DASHBOARD"; then
-    log_message "Dashboard service restart completed."
-  else
-    log_message "Dashboard service restart FAILED."
-    exit 1
-  fi
+# Restart web status dashboard (system service via wrapper)
+if [[ -x "$DASHBOARD_RESTART" ]]; then
+    log_message "Restarting web status dashboard via $DASHBOARD_RESTART..."
+    if "$DASHBOARD_RESTART"; then
+        log_message "Dashboard restart completed."
+    else
+        log_message "Dashboard restart script returned non-zero exit code."
+    fi
 else
-  log_message "Dashboard restart script not found or not executable."
+    log_message "Dashboard restart script not found or not executable."
 fi
 
 log_message "===== App update completed successfully ====="
+exit 0
