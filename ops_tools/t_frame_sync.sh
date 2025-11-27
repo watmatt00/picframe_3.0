@@ -40,7 +40,7 @@ SAFE_MODE_FILE="$HOME/picframe_3.0/ops_tools/safe_mode.flag"
 PICFRAME_SERVICE="picframe.service"
 
 # Minimum expected file count to consider the remote "valid"
-MIN_FILES=10
+MIN_FILES=1
 
 # Default sync mode: QUICK (count comparison). Use --d for DETAILED (rclone check).
 SYNC_MODE="QUICK"
