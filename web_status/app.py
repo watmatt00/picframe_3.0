@@ -13,6 +13,10 @@ LOG_PATH = Path("/home/pi/logs/frame_sync.log")
 CHK_SCRIPT = Path("/home/pi/picframe_3.0/ops_tools/chk_sync.sh")
 WEB_SERVICE_NAME = "pf-web-status.service"   # system service
 PF_SERVICE_NAME = "picframe.service"         # user service (systemctl --user)
+
+# New: config for current source
+CONFIG_FILE = Path("/home/pi/picframe_3.0/config/frame_sources.conf")
+FRAME_LIVE = Path("/home/pi/Pictures/frame_live")
 # ----------------------------------------------------
 
 DASHBOARD_HTML = """
@@ -614,6 +618,59 @@ document.addEventListener('DOMContentLoaded', () => {
 </html>
 """
 
+def load_sources_from_config():
+    """Read frame_sources.conf and return list of {id,label,path,enabled}."""
+    sources = []
+    if not CONFIG_FILE.exists():
+        return sources
+    try:
+        with CONFIG_FILE.open("r", encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                parts = line.split("|")
+                if len(parts) != 4:
+                    continue
+                sid, label, path, enabled = parts
+                sources.append({
+                    "id": sid.strip(),
+                    "label": label.strip(),
+                    "path": path.strip(),
+                    "enabled": enabled.strip() == "1",
+                })
+    except Exception:
+        pass
+    return sources
+
+
+def get_current_remote_label():
+    """
+    Use /home/pi/Pictures/frame_live and frame_sources.conf to determine
+    the currently active source. Returns a friendly label like:
+      "gdt - Google Drive (gdt_frame)"
+    or falls back to the resolved path if not found.
+    """
+    if not FRAME_LIVE.exists() and not FRAME_LIVE.is_symlink():
+        return None
+
+    try:
+        target = FRAME_LIVE.resolve()
+    except Exception:
+        return None
+
+    sources = load_sources_from_config()
+    for s in sources:
+        try:
+            if Path(s["path"]).resolve() == target:
+                return f"{s['id']} - {s['label']}"
+        except Exception:
+            continue
+
+    # Fallback: show the actual path
+    return str(target)
+
+
 def parse_status_from_log():
     data = {
         "level": "err",
@@ -633,6 +690,8 @@ def parse_status_from_log():
         data["status_headline"] = "Log file not found"
         data["status_raw"] = str(LOG_PATH)
         data["log_tail"] = f"(log file not found: {LOG_PATH})"
+        # Still attempt to set current_remote from symlink
+        data["current_remote"] = get_current_remote_label()
         return data
 
     try:
@@ -641,24 +700,25 @@ def parse_status_from_log():
         data["status_headline"] = "Error reading log"
         data["status_raw"] = str(e)
         data["log_tail"] = f"(error reading {LOG_PATH}: {e})"
+        data["current_remote"] = get_current_remote_label()
         return data
 
     lines = text.splitlines()
     if not lines:
         data["status_headline"] = "Log is empty"
         data["log_tail"] = "(log file is empty)"
+        data["current_remote"] = get_current_remote_label()
         return data
 
     # Tail for UI
     tail_lines = lines[-80:]
-    data["log_tail"] = "\\n".join(tail_lines)
+    data["log_tail"] = "\n".join(tail_lines)
 
     last_sync_line = None
     last_restart_line = None
     gcount_line = None
     lcount_line = None
     last_dl_line = None  # last "rclone sync completed successfully." line
-    remote_path = None   # current remote path (rclone source)
 
     for line in reversed(lines):
         if last_sync_line is None and "SYNC_RESULT:" in line:
@@ -671,18 +731,9 @@ def parse_status_from_log():
             lcount_line = line
         if last_dl_line is None and "rclone sync completed successfully." in line:
             last_dl_line = line
-        if remote_path is None and "rclone sync" in line:
-            # Try to parse "rclone sync <REMOTE> <LOCAL>" and grab REMOTE
-            try:
-                after = line.split("rclone sync", 1)[1].strip()
-                tokens = after.split()
-                if tokens:
-                    remote_path = tokens[0]
-            except Exception:
-                remote_path = None
 
         if (last_sync_line and last_restart_line and gcount_line and
-                lcount_line and last_dl_line and remote_path):
+                lcount_line and last_dl_line):
             break
 
     def parse_count(line):
@@ -700,7 +751,6 @@ def parse_status_from_log():
     lcount = parse_count(lcount_line)
     data["google_count"] = gcount
     data["local_count"] = lcount
-    data["current_remote"] = remote_path
 
     # Last sync
     if last_sync_line:
@@ -765,6 +815,9 @@ def parse_status_from_log():
             data["level"] = "warn"
             data["status_label"] = status_upper or "UNKNOWN"
             data["status_headline"] = "Status unclear"
+
+    # New: set current remote from frame_live/config
+    data["current_remote"] = get_current_remote_label()
 
     return data
 
