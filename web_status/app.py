@@ -1,19 +1,27 @@
 #!/usr/bin/env python3
 import os
-import subprocess
-import socket
 from pathlib import Path
 from datetime import datetime
+
 from flask import Flask, jsonify, render_template_string
 
 app = Flask(__name__)
 
-# --- Paths / service names you may edit if needed ---
+# -------------------------------------------------------------------
+# Paths / service names
+# -------------------------------------------------------------------
 LOG_PATH = Path("/home/pi/logs/frame_sync.log")
 CHK_SCRIPT = Path("/home/pi/picframe_3.0/ops_tools/chk_sync.sh")
+
+CONFIG_FILE = Path("/home/pi/picframe_3.0/config/frame_sources.conf")
+FRAME_LIVE = Path("/home/pi/Pictures/frame_live")
+
 WEB_SERVICE_NAME = "pf-web-status.service"   # system service
 PF_SERVICE_NAME = "picframe.service"         # user service (systemctl --user)
-# ----------------------------------------------------
+
+# -------------------------------------------------------------------
+# HTML template
+# -------------------------------------------------------------------
 
 DASHBOARD_HTML = """
 <!doctype html>
@@ -22,6 +30,7 @@ DASHBOARD_HTML = """
     <meta charset="utf-8">
     <title>PicFrame Sync Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+
     <style>
         :root {
             color-scheme: dark;
@@ -30,862 +39,579 @@ DASHBOARD_HTML = """
             margin: 0;
             padding: 0;
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background: radial-gradient(circle at top, #111827 0, #020617 55%, #000 100%);
+            background: radial-gradient(circle at top, #1f2933 0, #020617 55%);
             color: #e5e7eb;
         }
-        .banner {
-            padding: 0.55rem 1.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 0.75rem;
-            font-size: 0.9rem;
-            border-bottom: 1px solid rgba(15,23,42,0.9);
-        }
-        .banner-ok {
-            background: linear-gradient(90deg, #065f46, #16a34a);
-        }
-        .banner-warn {
-            background: linear-gradient(90deg, #92400e, #d97706);
-        }
-        .banner-err {
-            background: linear-gradient(90deg, #7f1d1d, #b91c1c);
-        }
-        .banner-left {
-            font-weight: 500;
-        }
-        .banner-right {
-            font-size: 0.78rem;
-            opacity: 0.9;
-        }
-        .shell {
+        .page {
             max-width: 1100px;
             margin: 0 auto;
-            padding: 1.4rem 1.5rem 1.5rem;
+            padding: 1.5rem 1.25rem 3rem;
         }
-        .header {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 1.25rem;
+        h1 {
+            font-size: 1.8rem;
+            margin: 0 0 0.5rem;
         }
-        .title {
-            font-size: 1.6rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-        .badge {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.07em;
-            padding: 0.15rem 0.6rem;
-            border-radius: 999px;
-            border: 1px solid #4b5563;
-            color: #e5e7eb;
-        }
-        .meta {
-            font-size: 0.8rem;
+        .subtitle {
+            font-size: 0.9rem;
             color: #9ca3af;
+            margin-bottom: 1.5rem;
         }
         .grid {
             display: grid;
-            grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
-            gap: 1.25rem;
-        }
-        @media (max-width: 900px) {
-            .grid {
-                grid-template-columns: minmax(0, 1fr);
-            }
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1rem;
         }
         .card {
-            background: rgba(15,23,42,0.96);
-            border-radius: 0.9rem;
-            padding: 1.25rem 1.4rem;
-            border: 1px solid rgba(55,65,81,0.9);
-            box-shadow: 0 10px 35px rgba(0,0,0,0.6);
+            background: rgba(15, 23, 42, 0.92);
+            border-radius: 0.75rem;
+            padding: 1rem 1.1rem;
+            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.45);
+            border: 1px solid rgba(148, 163, 184, 0.18);
         }
-        .card-title {
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: #d1d5db;
-            margin-bottom: 0.5rem;
+        .card-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            gap: 0.5rem;
+            align-items: baseline;
+            margin-bottom: 0.5rem;
         }
-        .card-title span {
-            font-size: 0.75rem;
-            font-weight: 400;
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+        .card-subtitle {
+            font-size: 0.8rem;
             color: #9ca3af;
         }
-        .traffic-container {
-            display: flex;
-            align-items: flex-start;
-            gap: 1.5rem;
-        }
-        .traffic {
-            display: flex;
-            flex-direction: column;
-            gap: 0.35rem;
-            padding: 0.6rem 0.7rem;
-            background: radial-gradient(circle at top, #020617 0, #020617 60%, #000 100%);
-            border-radius: 999px;
-            border: 1px solid #111827;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.7);
-        }
-        .light {
-            width: 1.25rem;
-            height: 1.25rem;
-            border-radius: 999px;
-            background: #111827;
-            box-shadow: 0 0 0 1px #020617;
-            opacity: 0.25;
-        }
-        .light.on-green {
-            background: radial-gradient(circle at 30% 20%, #bbf7d0, #22c55e);
-            box-shadow: 0 0 18px #22c55e;
-            opacity: 1;
-        }
-        .light.on-yellow {
-            background: radial-gradient(circle at 30% 20%, #fef3c7, #facc15);
-            box-shadow: 0 0 18px #facc15;
-            opacity: 1;
-        }
-        .light.on-red {
-            background: radial-gradient(circle at 30% 20%, #fecaca, #ef4444);
-            box-shadow: 0 0 20px #ef4444;
-            opacity: 1;
-        }
-        .status-text-main {
-            font-size: 1.1rem;
-            font-weight: 500;
-        }
-        .status-chip {
+        .status-pill {
             display: inline-flex;
-            padding: 0.15rem 0.5rem;
+            align-items: center;
+            padding: 0.2rem 0.55rem;
             border-radius: 999px;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 600;
-            margin-left: 0.4rem;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
         }
-        .chip-ok { background:#065f46; color:#bbf7d0; }
-        .chip-warn { background:#92400e; color:#fed7aa; }
-        .chip-err { background:#7f1d1d; color:#fecaca; }
-        .metrics {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 0.65rem;
-            margin-top: 0.9rem;
+        .status-ok {
+            background: rgba(22, 163, 74, 0.15);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.45);
         }
-        @media (max-width: 700px) {
-            .metrics {
-                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            }
+        .status-warn {
+            background: rgba(202, 138, 4, 0.15);
+            color: #facc15;
+            border: 1px solid rgba(234, 179, 8, 0.45);
+        }
+        .status-bad {
+            background: rgba(220, 38, 38, 0.16);
+            color: #f97373;
+            border: 1px solid rgba(248, 113, 113, 0.55);
+        }
+
+        .metric-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-top: 0.4rem;
         }
         .metric {
-            padding: 0.55rem 0.7rem;
-            border-radius: 0.7rem;
-            background: #020617;
-            border: 1px solid #111827;
+            min-width: 120px;
         }
         .metric-label {
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             color: #9ca3af;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.1rem;
         }
         .metric-value {
-            font-size: 0.88rem;
-            font-variant-numeric: tabular-nums;
+            font-size: 1.2rem;
+            font-weight: 600;
         }
-        .metric-value.mono {
+        .metric-value.small {
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .mono {
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
         }
-        .svc-lines {
-            margin-top: 0.9rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.3rem;
-        }
-        .svc-line {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.8rem;
-        }
-        .svc-label {
-            font-size: 0.7rem;
-            color: #9ca3af;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            min-width: 9.5rem;
-        }
-        .svc-indicator {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-        }
-        .status-dot {
-            width: 0.65rem;
-            height: 0.65rem;
-            border-radius: 999px;
-            background: #4b5563;
-            box-shadow: 0 0 0 1px #020617;
-        }
-        .dot-ok {
-            background: radial-gradient(circle at 30% 20%, #bbf7d0, #22c55e);
-            box-shadow: 0 0 10px #22c55e;
-        }
-        .dot-warn {
-            background: radial-gradient(circle at 30% 20%, #fef3c7, #facc15);
-            box-shadow: 0 0 10px #facc15;
-        }
-        .dot-err {
-            background: radial-gradient(circle at 30% 20%, #fecaca, #ef4444);
-            box-shadow: 0 0 10px #ef4444;
-        }
-        pre {
-            margin: 0.4rem 0 0;
-            padding: 0.7rem 0.8rem;
+        .log-box {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.75rem;
+            background: rgba(15, 23, 42, 0.85);
             border-radius: 0.6rem;
-            background: #020617;
-            border: 1px solid #111827;
-            font-size: 0.78rem;
-            line-height: 1.4;
-            overflow-x: auto;
+            padding: 0.75rem 0.85rem;
+            max-height: 260px;
+            overflow: auto;
             white-space: pre-wrap;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            border: 1px solid rgba(51, 65, 85, 0.9);
         }
-        .controls {
+
+        .btn-row {
             display: flex;
             flex-wrap: wrap;
             gap: 0.5rem;
-            align-items: center;
+            margin-top: 0.75rem;
         }
         button {
-            appearance: none;
-            border: none;
-            border-radius: 999px;
-            padding: 0.45rem 0.9rem;
-            font-size: 0.8rem;
-            font-weight: 500;
-            background: #1d4ed8;
-            color: white;
             cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-            box-shadow: 0 4px 12px rgba(37,99,235,0.45);
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            background: radial-gradient(circle at top left, #1e293b, #020617);
+            color: #e5e7eb;
+            font-size: 0.78rem;
+            font-weight: 500;
+            padding: 0.4rem 0.9rem;
         }
         button:hover {
-            filter: brightness(1.05);
+            border-color: rgba(248, 250, 252, 0.65);
         }
-        button[disabled] {
+        button:disabled {
             opacity: 0.5;
             cursor: default;
-            box-shadow: none;
         }
-        .note {
-            font-size: 0.75rem;
-            color: #9ca3af;
-        }
-        .pill {
-            font-size: 0.75rem;
-            padding: 0.15rem 0.5rem;
-            border-radius: 999px;
-            border: 1px solid #374151;
-        }
-        .pill span {
-            opacity: 0.7;
-        }
+
         .footer {
-            margin-top: 1rem;
+            margin-top: 2rem;
             font-size: 0.7rem;
             color: #6b7280;
-        }
-        .log-toggle {
-            font-size: 0.78rem;
-            cursor: pointer;
-            padding: 0.25rem 0.5rem;
-            border-radius: 999px;
-            border: 1px solid #374151;
+            text-align: right;
         }
     </style>
 </head>
 <body>
-<div id="statusBanner" class="banner banner-err">
-    <div class="banner-left" id="bannerHeadline">Sync status</div>
-    <div class="banner-right">
-        <span id="bannerLabel">ERROR</span> · <span id="lastUpdated">Loading…</span>
-    </div>
-</div>
-
-<div class="shell">
-    <div class="header">
-        <div>
-            <div class="title">
-                PicFrame Sync Dashboard
-                <span class="badge">host: {{ hostname }}</span>
-            </div>
-            <div class="meta">
-                Script: {{ script_path }} · Log: {{ log_path }}
-            </div>
-        </div>
+<div class="page">
+    <h1>PicFrame Status</h1>
+    <div class="subtitle">
+        Overall sync health, source selection, and recent activity.
     </div>
 
     <div class="grid">
-
-        <!-- LEFT: Summary -->
+        <!-- Overall status + current source -->
         <div class="card">
-            <div class="card-title">
-                Overall status
-                <span id="statusLabelChip" class="pill"><span>Status:</span> <strong id="statusLabelText">—</strong></span>
-            </div>
-
-            <div class="traffic-container">
-                <div class="traffic">
-                    <div id="lightRed" class="light"></div>
-                    <div id="lightYellow" class="light"></div>
-                    <div id="lightGreen" class="light"></div>
-                </div>
-
+            <div class="card-header">
                 <div>
-                    <div class="status-text-main">
-                        <span id="statusHeadline">Waiting for data…</span>
-                        <span id="statusChip" class="status-chip chip-err" style="display:none;"></span>
+                    <div class="card-title">Overall Status</div>
+                    <div class="card-subtitle" id="last-sync-text">
+                        Loading…
                     </div>
-
-                    <div class="metrics">
-                        <div class="metric">
-                            <div class="metric-label">Google count</div>
-                            <div id="gCount" class="metric-value mono">—</div>
-                        </div>
-                        <div class="metric">
-                            <div class="metric-label">Local count</div>
-                            <div id="lCount" class="metric-value mono">—</div>
-                        </div>
-                    </div>
-
-                    <div class="svc-lines">
-                        <div class="svc-line">
-                            <span class="svc-label">Web status service</span>
-                            <span class="svc-indicator">
-                                <span id="webSvcDot" class="status-dot"></span>
-                                <span id="webSvcText" class="metric-value">CHECKING…</span>
-                            </span>
-                        </div>
-                        <div class="svc-line">
-                            <span class="svc-label">PicFrame service</span>
-                            <span class="svc-indicator">
-                                <span id="pfSvcDot" class="status-dot"></span>
-                                <span id="pfSvcText" class="metric-value">CHECKING…</span>
-                            </span>
-                        </div>
-                    </div>
-
                 </div>
+                <div id="overall-pill" class="status-pill status-warn">
+                    Pending
+                </div>
+            </div>
+
+            <div class="metric-row">
+                <div class="metric">
+                    <div class="metric-label">Current Source</div>
+                    <div class="metric-value small" id="current-source-label">–</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Source Directory</div>
+                    <div class="metric-value small mono" id="current-source-path">–</div>
+                </div>
+            </div>
+
+            <div class="metric-row" style="margin-top: 0.5rem;">
+                <div class="metric">
+                    <div class="metric-label">Files in Source Directory</div>
+                    <div class="metric-value" id="current-source-count">–</div>
+                </div>
+            </div>
+
+            <div class="btn-row">
+                <button id="btn-refresh" type="button" onclick="refreshStatus()">Refresh</button>
             </div>
         </div>
 
-        <!-- RIGHT: tools -->
+        <!-- Counts (Remote / Local) -->
         <div class="card">
-            <div class="card-title">
-                Activity & tools
-                <span>Uses log; chk_sync on demand</span>
+            <div class="card-header">
+                <div class="card-title">Counts</div>
+                <div class="card-subtitle">Latest from logs</div>
             </div>
-
-            <div class="controls" style="margin-bottom:0.5rem;">
-                <button id="btnRefresh" type="button">↻ Refresh from log</button>
-                <button id="btnRunCheck" type="button">▶ Run chk_sync.sh --d</button>
-                <span class="note">
-                    Log-only view · chk_sync.sh --d runs only when requested.
-                </span>
-            </div>
-
-            <div class="metric" style="margin:0.75rem 0 0.4rem;">
-                <div class="metric-label">Last run</div>
-                <div id="lastRun" class="metric-value mono">—</div>
-            </div>
-
-            <div class="metric" style="margin:0.25rem 0 0.4rem;">
-                <div class="metric-label">Last Service Restart</div>
-                <div id="lastRestart" class="metric-value mono">—</div>
-            </div>
-
-            <div class="metric" style="margin:0.25rem 0 1rem;">
-                <div class="metric-label">Last file download</div>
-                <div id="lastFileDownload" class="metric-value mono">—</div>
-            </div>
-
-            <div style="margin-top:0.5rem;">
-                <div class="meta" style="display:flex;justify-content:space-between;align-items:center;gap:0.5rem;">
-                    <span>Log tail (from frame_sync.log)</span>
-                    <span id="logToggle" class="log-toggle">Show log ▼</span>
+            <div class="metric-row">
+                <div class="metric">
+                    <div class="metric-label">Remote Count</div>
+                    <div class="metric-value" id="remote-count">–</div>
                 </div>
-                <div id="logSection" style="display:none;">
-                    <pre id="logTail">Loading…</pre>
+                <div class="metric">
+                    <div class="metric-label">Local Count</div>
+                    <div class="metric-value" id="local-count">–</div>
                 </div>
             </div>
-
-            <div style="margin-top:0.6rem;">
-                <div class="meta">chk_sync.sh --d output:</div>
-                <pre id="checkOutput">(not run yet)</pre>
+            <div class="metric-row" style="margin-top: 0.6rem;">
+                <div class="metric">
+                    <div class="metric-label">Remote − Local</div>
+                    <div class="metric-value small" id="count-delta">–</div>
+                </div>
             </div>
         </div>
 
+        <!-- Log snippet -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Recent Log</div>
+                <div class="card-subtitle mono" id="log-file-name"></div>
+            </div>
+            <div class="log-box" id="log-box">
+                Loading log…
+            </div>
+        </div>
     </div>
 
     <div class="footer">
-        Auto-refreshes every 15 seconds · Designed for Pi on your LAN
+        PicFrame 3.0 – web status
     </div>
 </div>
 
 <script>
-function applyStatusLights(level) {
-    const red   = document.getElementById('lightRed');
-    const yellow= document.getElementById('lightYellow');
-    const green = document.getElementById('lightGreen');
-    red.className = 'light';
-    yellow.className = 'light';
-    green.className = 'light';
-
-    if (level === 'ok') {
-        green.classList.add('on-green');
-    } else if (level === 'warn') {
-        yellow.classList.add('on-yellow');
-    } else {
-        red.classList.add('on-red');
-    }
-}
-
-function applyStatusChip(level, label) {
-    const chip = document.getElementById('statusChip');
-    chip.style.display = 'inline-flex';
-    chip.textContent = label || '';
-    chip.className = 'status-chip';
-    if (level === 'ok')      chip.classList.add('chip-ok');
-    else if (level === 'warn') chip.classList.add('chip-warn');
-    else                       chip.classList.add('chip-err');
-}
-
-function applyBanner(level, headline, label, updatedAt) {
-    const banner = document.getElementById('statusBanner');
-    banner.className = 'banner';
-
-    if (level === 'ok') banner.classList.add('banner-ok');
-    else if (level === 'warn') banner.classList.add('banner-warn');
-    else banner.classList.add('banner-err');
-
-    document.getElementById('bannerHeadline').textContent = headline || 'Sync status';
-    document.getElementById('bannerLabel').textContent = label || '';
-    document.getElementById('lastUpdated').textContent = 'Updated: ' + (updatedAt || '—');
-}
-
-function applyServiceStatus(dotId, textId, level, label) {
-    const dot = document.getElementById(dotId);
-    const text = document.getElementById(textId);
-
-    dot.className = 'status-dot';
-    if (level === 'ok') {
-        dot.classList.add('dot-ok');
-    } else if (level === 'warn') {
-        dot.classList.add('dot-warn');
-    } else {
-        dot.classList.add('dot-err');
+async function refreshStatus() {
+    const btn = document.getElementById("btn-refresh");
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Refreshing…";
     }
 
-    text.textContent = label || 'UNKNOWN';
-}
+    try {
+        const resp = await fetch("/api/status");
+        if (!resp.ok) {
+            throw new Error("HTTP " + resp.status);
+        }
+        const data = await resp.json();
 
-function refreshStatus() {
-    fetch('/api/status')
-        .then(r => r.json())
-        .then(data => {
-            const level = data.level || 'err';
+        // Overall pill
+        const pill = document.getElementById("overall-pill");
+        if (pill) {
+            pill.textContent = data.overall_status_label || "Unknown";
 
-            document.getElementById('statusHeadline').textContent = data.status_headline || 'Status unknown';
-            document.getElementById('lastRun').textContent = data.last_sync || '—';
-            document.getElementById('lastRestart').textContent = data.last_restart || '—';
-            document.getElementById('lastFileDownload').textContent = data.last_file_download || '—';
-            document.getElementById('gCount').textContent = (data.google_count ?? '—');
-            document.getElementById('lCount').textContent = (data.local_count ?? '—');
-
-            document.getElementById('statusLabelText').textContent = data.status_label || '—';
-
-            const labelChip = document.getElementById('statusLabelChip');
-            labelChip.className = 'pill';
-            if (level === 'ok')      labelChip.style.borderColor = '#22c55e';
-            else if (level === 'warn') labelChip.style.borderColor = '#facc15';
-            else                      labelChip.style.borderColor = '#ef4444';
-
-            document.getElementById('logTail').textContent = data.log_tail || '(log is empty or missing)';
-
-            applyStatusLights(level);
-            applyStatusChip(level, data.status_label || '');
-            applyBanner(level, data.status_headline, data.status_label, data.generated_at);
-
-            const webLevel = data.web_status_level || 'warn';
-            const webLabel = data.web_status_label || 'UNKNOWN';
-            applyServiceStatus('webSvcDot', 'webSvcText', webLevel, webLabel);
-
-            const pfLevel = data.pf_status_level || 'warn';
-            const pfLabel = data.pf_status_label || 'UNKNOWN';
-            applyServiceStatus('pfSvcDot', 'pfSvcText', pfLevel, pfLabel);
-        })
-        .catch(err => {
-            document.getElementById('logTail').textContent = 'Error loading status: ' + err;
-            applyStatusLights('err');
-            applyStatusChip('err', 'ERROR');
-            applyBanner('err', 'Error loading status', 'ERROR', '');
-            applyServiceStatus('webSvcDot', 'webSvcText', 'warn', 'UNKNOWN');
-            applyServiceStatus('pfSvcDot', 'pfSvcText', 'warn', 'UNKNOWN');
-        });
-}
-
-function runCheck() {
-    const btn = document.getElementById('btnRunCheck');
-    btn.disabled = true;
-    btn.textContent = 'Running chk_sync.sh --d…';
-
-    fetch('/api/run-check')
-        .then(r => r.json())
-        .then(data => {
-            const out = [];
-            out.push('# chk_sync.sh --d run');
-            out.push('Exit code: ' + data.exit_code);
-
-            if (data.stdout) {
-                out.push('');
-                out.push('[stdout]');
-                out.push(data.stdout);
+            pill.classList.remove("status-ok", "status-warn", "status-bad");
+            if (data.overall_status_level === "ok") {
+                pill.classList.add("status-ok");
+            } else if (data.overall_status_level === "warn") {
+                pill.classList.add("status-warn");
+            } else if (data.overall_status_level === "bad") {
+                pill.classList.add("status-bad");
+            } else {
+                pill.classList.add("status-warn");
             }
-            if (data.stderr) {
-                out.push('');
-                out.push('[stderr]');
-                out.push(data.stderr);
-            }
+        }
 
-            document.getElementById('checkOutput').textContent = out.join('\\n');
-            refreshStatus();
-        })
-        .catch(err => {
-            document.getElementById('checkOutput').textContent = 'Error running chk_sync: ' + err;
-        })
-        .finally(() => {
+        const lastSyncText = document.getElementById("last-sync-text");
+        if (lastSyncText) {
+            lastSyncText.textContent = data.last_sync_text || "No sync info found.";
+        }
+
+        // Current source
+        const csLabel = document.getElementById("current-source-label");
+        const csPath = document.getElementById("current-source-path");
+        const csCount = document.getElementById("current-source-count");
+
+        if (csLabel) {
+            if (data.current_source_id && data.current_source_label) {
+                csLabel.textContent = data.current_source_id + " – " + data.current_source_label;
+            } else {
+                csLabel.textContent = "Unknown";
+            }
+        }
+        if (csPath) {
+            csPath.textContent = data.current_source_path || "–";
+        }
+        if (csCount) {
+            csCount.textContent = (data.current_source_count !== null && data.current_source_count !== undefined)
+                ? data.current_source_count
+                : "–";
+        }
+
+        // Counts
+        const remoteCountEl = document.getElementById("remote-count");
+        const localCountEl = document.getElementById("local-count");
+        const deltaEl = document.getElementById("count-delta");
+
+        if (remoteCountEl) {
+            remoteCountEl.textContent = (data.remote_count !== null && data.remote_count !== undefined)
+                ? data.remote_count
+                : "–";
+        }
+        if (localCountEl) {
+            localCountEl.textContent = (data.local_count !== null && data.local_count !== undefined)
+                ? data.local_count
+                : "–";
+        }
+
+        if (deltaEl) {
+            if (data.remote_count !== null && data.local_count !== null &&
+                data.remote_count !== undefined && data.local_count !== undefined) {
+                const delta = data.remote_count - data.local_count;
+                let txt = delta;
+                if (delta > 0) {
+                    txt = "+" + delta;
+                }
+                deltaEl.textContent = txt;
+            } else {
+                deltaEl.textContent = "–";
+            }
+        }
+
+        // Log box
+        const logBox = document.getElementById("log-box");
+        const logFileName = document.getElementById("log-file-name");
+        if (logBox) {
+            logBox.textContent = data.log_tail || "No log data.";
+        }
+        if (logFileName) {
+            logFileName.textContent = data.log_path || "";
+        }
+    } catch (err) {
+        console.error(err);
+        const pill = document.getElementById("overall-pill");
+        if (pill) {
+            pill.textContent = "Error";
+            pill.classList.remove("status-ok");
+            pill.classList.add("status-bad");
+        }
+        const logBox = document.getElementById("log-box");
+        if (logBox) {
+            logBox.textContent = "Failed to fetch status: " + err;
+        }
+    } finally {
+        if (btn) {
             btn.disabled = false;
-            btn.textContent = '▶ Run chk_sync.sh --d';
-        });
+            btn.textContent = "Refresh";
+        }
+    }
 }
 
-function setupLogToggle() {
-    const toggle = document.getElementById('logToggle');
-    const section = document.getElementById('logSection');
-    let open = false;
-
-    toggle.addEventListener('click', () => {
-        open = !open;
-        section.style.display = open ? 'block' : 'none';
-        toggle.textContent = open ? 'Hide log ▲' : 'Show log ▼';
-    });
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('btnRefresh').addEventListener('click', refreshStatus);
-    document.getElementById('btnRunCheck').addEventListener('click', runCheck);
-    setupLogToggle();
+// Auto-refresh on load
+window.addEventListener("load", () => {
     refreshStatus();
-    setInterval(refreshStatus, 15000);
+    // Optional: periodic refresh
+    setInterval(refreshStatus, 30000);
 });
 </script>
 </body>
 </html>
 """
 
-def parse_status_from_log():
-    data = {
-        "level": "err",
-        "status_label": "NO DATA",
-        "status_headline": "No log data available",
-        "status_raw": None,
-        "last_sync": None,
-        "last_restart": None,
-        "last_file_download": None,
-        "google_count": None,
-        "local_count": None,
-        "log_tail": None,
-    }
+# -------------------------------------------------------------------
+# Backend helpers
+# -------------------------------------------------------------------
 
+def read_log_tail(max_bytes: int = 8000) -> str:
+    """Return the last ~max_bytes from the log file as a string."""
     if not LOG_PATH.exists():
-        data["status_headline"] = "Log file not found"
-        data["status_raw"] = str(LOG_PATH)
-        data["log_tail"] = f"(log file not found: {LOG_PATH})"
-        return data
+        return "Log file not found: {}".format(LOG_PATH)
 
     try:
-        text = LOG_PATH.read_text(encoding="utf-8", errors="ignore")
+        size = LOG_PATH.stat().st_size
+        start = max(0, size - max_bytes)
+        with LOG_PATH.open("rb") as f:
+            f.seek(start)
+            data = f.read().decode(errors="replace")
+        return data
     except Exception as e:
-        data["status_headline"] = "Error reading log"
-        data["status_raw"] = str(e)
-        data["log_tail"] = f"(error reading {LOG_PATH}: {e})"
-        return data
+        return f"Error reading log file: {e}"
 
-    lines = text.splitlines()
-    if not lines:
-        data["status_headline"] = "Log is empty"
-        data["log_tail"] = "(log file is empty)"
-        return data
 
-    # Tail for UI
-    tail_lines = lines[-80:]
-    data["log_tail"] = "\\n".join(tail_lines)
+def parse_counts_from_log():
+    """
+    Parse remote/local counts from the log.
 
-    last_sync_line = None
-    last_restart_line = None
-    gcount_line = None
-    lcount_line = None
-    last_dl_line = None  # last "rclone sync completed successfully." line
+    Assumes frame_sync.sh logs lines like:
+      "... Post-sync Google count: 123"
+      "... Post-sync Local count:  123"
+    If not found, returns (None, None).
+    """
+    if not LOG_PATH.exists():
+        return None, None
 
+    remote = None
+    local = None
+
+    try:
+        with LOG_PATH.open("r", encoding="utf-8", errors="replace") as f:
+            lines = f.readlines()
+    except Exception:
+        return None, None
+
+    # Walk backwards to find the latest occurrences
     for line in reversed(lines):
-        if last_sync_line is None and "SYNC_RESULT:" in line:
-            last_sync_line = line
-        if last_restart_line is None and "restart" in line.lower():
-            last_restart_line = line
-        if gcount_line is None and "Google count" in line:
-            gcount_line = line
-        if lcount_line is None and "Local count" in line:
-            lcount_line = line
-        if last_dl_line is None and "rclone sync completed successfully." in line:
-            last_dl_line = line
-        if last_sync_line and last_restart_line and gcount_line and lcount_line and last_dl_line:
+        if remote is None and "Post-sync Google count:" in line:
+            try:
+                remote = int(line.strip().split(":")[-1])
+            except ValueError:
+                remote = None
+        if local is None and "Post-sync Local count:" in line:
+            try:
+                local = int(line.strip().split(":")[-1])
+            except ValueError:
+                local = None
+        if remote is not None and local is not None:
             break
 
-    def parse_count(line):
-        if not line:
-            return None
-        parts = line.rsplit(":", 1)
-        if len(parts) != 2:
-            return None
-        try:
-            return int(parts[1].strip())
-        except ValueError:
-            return None
-
-    gcount = parse_count(gcount_line)
-    lcount = parse_count(lcount_line)
-    data["google_count"] = gcount
-    data["local_count"] = lcount
-
-    # Last sync
-    if last_sync_line:
-        data["status_raw"] = last_sync_line
-        ts = last_sync_line[:19]
-        try:
-            dt = datetime.fromisoformat(ts.replace(" ", "T"))
-            data["last_sync"] = dt.strftime("%Y-%m-%d %H:%M:%S")
-        except Exception:
-            data["last_sync"] = ts.strip() or None
-        try:
-            status_token = last_sync_line.split("SYNC_RESULT:")[1].strip()
-        except IndexError:
-            status_token = "UNKNOWN"
-    else:
-        status_token = "UNKNOWN"
-
-    # Last restart
-    if last_restart_line:
-        ts = last_restart_line[:19]
-        try:
-            dt = datetime.fromisoformat(ts.replace(" ", "T"))
-            data["last_restart"] = dt.strftime("%Y-%m-%d %H:%M:%S")
-        except Exception:
-            data["last_restart"] = ts.strip() or None
-
-    # Last file download: from last "rclone sync completed successfully." line
-    if last_dl_line:
-        ts = last_dl_line[:19]
-        try:
-            dt = datetime.fromisoformat(ts.replace(" ", "T"))
-            data["last_file_download"] = dt.strftime("%Y-%m-%d %H:%M:%S")
-        except Exception:
-            data["last_file_download"] = ts.strip() or None
-
-    # Overall status level/label/headline
-    status_upper = status_token.upper()
-
-    if gcount is not None and lcount is not None:
-        if gcount == lcount:
-            data["level"] = "ok"
-            data["status_label"] = "MATCH"
-            data["status_headline"] = "Counts match"
-        else:
-            data["level"] = "err"
-            data["status_label"] = "MISMATCH"
-            data["status_headline"] = "Counts do not match"
-    else:
-        if "OK" in status_upper and "RESTART" not in status_upper:
-            data["level"] = "ok"
-            data["status_label"] = "OK"
-            data["status_headline"] = "Sync is healthy"
-        elif "RESTART" in status_upper or "WARN" in status_upper:
-            data["level"] = "warn"
-            data["status_label"] = "RESTART NEEDED"
-            data["status_headline"] = "Attention required"
-        elif "ERROR" in status_upper or "FAIL" in status_upper:
-            data["level"] = "err"
-            data["status_headline"] = "Sync errors detected"
-            data["status_label"] = "ERROR"
-        else:
-            data["level"] = "warn"
-            data["status_label"] = status_upper or "UNKNOWN"
-            data["status_headline"] = "Status unclear"
-
-    return data
+    return remote, local
 
 
-def get_web_service_status():
-    info = {
-        "web_status_level": "warn",
-        "web_status_label": "UNKNOWN",
-        "web_status_raw": None,
-    }
+def parse_last_sync_text():
+    """
+    Pull a simple 'last sync' summary from the log.
+
+    Looks for a line containing 'SYNC_RESULT' or falls back to last line.
+    """
+    if not LOG_PATH.exists():
+        return "Log file not found."
+
     try:
-        result = subprocess.run(
-            ["systemctl", "is-active", WEB_SERVICE_NAME],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        state = (result.stdout or "").strip()
-
-        if state == "active":
-            info["web_status_level"] = "ok"
-            info["web_status_label"] = "RUNNING"
-            info["web_status_raw"] = state
-        elif state in ("activating", "reloading"):
-            info["web_status_level"] = "warn"
-            info["web_status_label"] = state.upper()
-            info["web_status_raw"] = state
-        else:
-            raw = state or (result.stderr or "").strip() or "unknown"
-            info["web_status_level"] = "err"
-            info["web_status_label"] = raw.upper()
-            info["web_status_raw"] = raw
+        with LOG_PATH.open("r", encoding="utf-8", errors="replace") as f:
+            lines = f.readlines()
     except Exception as e:
-        info["web_status_level"] = "warn"
-        info["web_status_label"] = "UNKNOWN"
-        info["web_status_raw"] = str(e)
-    return info
+        return f"Error reading log file: {e}"
+
+    last_line = lines[-1].strip() if lines else ""
+    sync_line = None
+
+    for line in reversed(lines):
+        if "SYNC_RESULT" in line:
+            sync_line = line.strip()
+            break
+
+    if sync_line:
+        return sync_line
+    elif last_line:
+        return last_line
+    else:
+        return "No log entries found."
 
 
-def get_picframe_service_status():
-    info = {
-        "pf_status_level": "warn",
-        "pf_status_label": "UNKNOWN",
-        "pf_status_raw": None,
-    }
+def determine_overall_status(remote_count, local_count):
+    """
+    Decide 'ok' / 'warn' / 'bad' based on counts.
+    """
+    if remote_count is None or local_count is None:
+        return "warn", "Unknown"
+
+    if remote_count == local_count:
+        return "ok", "In Sync"
+
+    # Simple heuristic: mismatch -> warn
+    return "warn", "Mismatch"
+
+
+def load_sources_from_config():
+    """
+    Load sources from frame_sources.conf.
+    Returns list of dicts: {id, label, path, enabled}.
+    """
+    sources = []
+    if not CONFIG_FILE.exists():
+        return sources
+
     try:
-        env = os.environ.copy()
-        env.setdefault("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+        with CONFIG_FILE.open("r", encoding="utf-8", errors="replace") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                parts = line.split("|")
+                if len(parts) != 4:
+                    continue
+                sid, label, path, enabled = parts
+                sources.append({
+                    "id": sid.strip(),
+                    "label": label.strip(),
+                    "path": path.strip(),
+                    "enabled": enabled.strip() == "1",
+                })
+    except Exception:
+        # Fail silently; caller will see no sources
+        pass
 
-        result = subprocess.run(
-            ["systemctl", "--user", "is-active", PF_SERVICE_NAME],
-            capture_output=True,
-            text=True,
-            check=False,
-            env=env,
-        )
-        state = (result.stdout or "").strip()
-        err = (result.stderr or "").strip()
+    return sources
 
-        if not state and "Failed to connect to bus" in err:
-            info["pf_status_level"] = "warn"
-            info["pf_status_label"] = "UNKNOWN"
-            info["pf_status_raw"] = err
-            return info
 
-        if state == "active":
-            info["pf_status_level"] = "ok"
-            info["pf_status_label"] = "RUNNING"
-            info["pf_status_raw"] = state
-        elif state in ("activating", "reloading"):
-            info["pf_status_level"] = "warn"
-            info["pf_status_label"] = state.upper()
-            info["pf_status_raw"] = state
-        elif state:
-            info["pf_status_level"] = "err"
-            info["pf_status_label"] = state.upper()
-            info["pf_status_raw"] = state
-        else:
-            if err:
-                info["pf_status_level"] = "err"
-                info["pf_status_label"] = "ERROR"
-                info["pf_status_raw"] = err
-            else:
-                info["pf_status_level"] = "warn"
-                info["pf_status_label"] = "UNKNOWN"
-                info["pf_status_raw"] = "no state returned"
-    except Exception as e:
-        info["pf_status_level"] = "warn"
-        info["pf_status_label"] = "UNKNOWN"
-        info["pf_status_raw"] = str(e)
+def get_current_source_info():
+    """
+    Return (source_id, label, path, file_count) for current source.
 
-    return info
+    - path is from the frame_live symlink target (readlink -f).
+    - id/label are matched via frame_sources.conf (if possible).
+    - file_count is a filesystem walk count under that dir.
+    """
+    if not FRAME_LIVE.exists() and not FRAME_LIVE.is_symlink():
+        return None, None, None, None
 
+    try:
+        source_path = FRAME_LIVE.resolve()
+    except Exception:
+        return None, None, None, None
+
+    # Map to config if possible
+    sources = load_sources_from_config()
+    source_id = None
+    source_label = None
+    for s in sources:
+        try:
+            if Path(s["path"]).resolve() == source_path:
+                source_id = s["id"]
+                source_label = s["label"]
+                break
+        except Exception:
+            continue
+
+    # Count files under the directory
+    file_count = None
+    if source_path.is_dir():
+        try:
+            total = 0
+            for _, _, files in os.walk(source_path):
+                total += len(files)
+            file_count = total
+        except Exception:
+            file_count = None
+
+    return source_id, source_label, str(source_path), file_count
+
+
+# -------------------------------------------------------------------
+# Routes
+# -------------------------------------------------------------------
 
 @app.route("/")
-def dashboard():
-    hostname = socket.gethostname()
-    return render_template_string(
-        DASHBOARD_HTML,
-        hostname=hostname,
-        script_path=str(CHK_SCRIPT),
-        log_path=str(LOG_PATH),
-    )
+def index():
+    return render_template_string(DASHBOARD_HTML)
 
 
 @app.route("/api/status")
 def api_status():
-    status = parse_status_from_log()
-    status["generated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    status.update(get_web_service_status())
-    status.update(get_picframe_service_status())
-    return jsonify(status)
+    # Counts from log
+    remote_count, local_count = parse_counts_from_log()
+    status_level, status_label = determine_overall_status(remote_count, local_count)
 
+    last_sync = parse_last_sync_text()
+    log_tail = read_log_tail()
 
-@app.route("/api/run-check")
-def api_run_check():
-    if not CHK_SCRIPT.exists():
-        return jsonify({
-            "exit_code": -1,
-            "stdout": "",
-            "stderr": f"chk_sync.sh not found at {CHK_SCRIPT}",
-        })
+    # Current source info
+    src_id, src_label, src_path, src_count = get_current_source_info()
 
-    try:
-        result = subprocess.run(
-            [str(CHK_SCRIPT), "--d"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        return jsonify({
-            "exit_code": result.returncode,
-            "stdout": result.stdout,
-            "stderr": result.stderr,
-        })
-    except Exception as e:
-        return jsonify({
-            "exit_code": -1,
-            "stdout": "",
-            "stderr": str(e),
-        })
+    payload = {
+        "overall_status_level": status_level,
+        "overall_status_label": status_label,
+        "last_sync_text": last_sync,
+
+        "remote_count": remote_count,
+        "local_count": local_count,
+
+        "current_source_id": src_id,
+        "current_source_label": src_label,
+        "current_source_path": src_path,
+        "current_source_count": src_count,
+
+        "log_tail": log_tail,
+        "log_path": str(LOG_PATH),
+    }
+
+    return jsonify(payload)
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5050)
+    # Typically managed by systemd, but this is fine for manual runs
+    app.run(host="0.0.0.0", port=5000, debug=False)
