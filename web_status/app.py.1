@@ -363,7 +363,7 @@ DASHBOARD_HTML = """
 
                     <div class="metrics">
                         <div class="metric">
-                            <div class="metric-label">Remote count</div>
+                            <div class="metric-label">Google count</div>
                             <div id="gCount" class="metric-value mono">—</div>
                         </div>
                         <div class="metric">
@@ -385,12 +385,6 @@ DASHBOARD_HTML = """
                             <span class="svc-indicator">
                                 <span id="pfSvcDot" class="status-dot"></span>
                                 <span id="pfSvcText" class="metric-value">CHECKING…</span>
-                            </span>
-                        </div>
-                        <div class="svc-line">
-                            <span class="svc-label">Current remote</span>
-                            <span class="svc-indicator">
-                                <span id="currentRemote" class="metric-value mono">—</span>
                             </span>
                         </div>
                     </div>
@@ -521,7 +515,6 @@ function refreshStatus() {
             document.getElementById('lastFileDownload').textContent = data.last_file_download || '—';
             document.getElementById('gCount').textContent = (data.google_count ?? '—');
             document.getElementById('lCount').textContent = (data.local_count ?? '—');
-            document.getElementById('currentRemote').textContent = data.current_remote || '—';
 
             document.getElementById('statusLabelText').textContent = data.status_label || '—';
 
@@ -625,7 +618,6 @@ def parse_status_from_log():
         "last_file_download": None,
         "google_count": None,
         "local_count": None,
-        "current_remote": None,
         "log_tail": None,
     }
 
@@ -658,7 +650,6 @@ def parse_status_from_log():
     gcount_line = None
     lcount_line = None
     last_dl_line = None  # last "rclone sync completed successfully." line
-    remote_path = None   # current remote path (rclone source)
 
     for line in reversed(lines):
         if last_sync_line is None and "SYNC_RESULT:" in line:
@@ -671,18 +662,7 @@ def parse_status_from_log():
             lcount_line = line
         if last_dl_line is None and "rclone sync completed successfully." in line:
             last_dl_line = line
-        if remote_path is None and "rclone sync" in line:
-            # Try to parse "rclone sync <REMOTE> <LOCAL>" and grab REMOTE
-            try:
-                after = line.split("rclone sync", 1)[1].strip()
-                tokens = after.split()
-                if tokens:
-                    remote_path = tokens[0]
-            except Exception:
-                remote_path = None
-
-        if (last_sync_line and last_restart_line and gcount_line and
-                lcount_line and last_dl_line and remote_path):
+        if last_sync_line and last_restart_line and gcount_line and lcount_line and last_dl_line:
             break
 
     def parse_count(line):
@@ -700,7 +680,6 @@ def parse_status_from_log():
     lcount = parse_count(lcount_line)
     data["google_count"] = gcount
     data["local_count"] = lcount
-    data["current_remote"] = remote_path
 
     # Last sync
     if last_sync_line:
