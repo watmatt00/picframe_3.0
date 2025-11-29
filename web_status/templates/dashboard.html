@@ -22,11 +22,7 @@
             align-items: center;
             gap: 0.75rem;
             font-size: 0.9rem;
-            border-bottom: 1px solid rgba(55,65,81,0.9);
-            background: linear-gradient(to right, #111827, #020617);
-            position: sticky;
-            top: 0;
-            z-index: 50;
+            border-bottom: 1px solid rgba(15,23,42,0.9);
         }
         .banner-ok {
             background: linear-gradient(90deg, #065f46, #16a34a);
@@ -58,48 +54,24 @@
             margin-bottom: 1.25rem;
         }
         .title {
-            font-size: 1.35rem;
+            font-size: 1.6rem;
             font-weight: 600;
-            letter-spacing: 0.02em;
             display: flex;
             align-items: center;
-            gap: 0.6rem;
+            gap: 0.75rem;
         }
         .badge {
             font-size: 0.75rem;
-            padding: 0.15rem 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            padding: 0.15rem 0.6rem;
             border-radius: 999px;
-            border: 1px solid rgba(156,163,175,0.8);
-            background: rgba(15,23,42,0.8);
-            color: #d1d5db;
+            border: 1px solid #4b5563;
+            color: #e5e7eb;
         }
         .meta {
-            font-size: 0.78rem;
+            font-size: 0.8rem;
             color: #9ca3af;
-            margin-top: 0.2rem;
-        }
-        .meta code {
-            font-size: 0.75rem;
-            padding: 0.05rem 0.3rem;
-            border-radius: 999px;
-            background: rgba(15,23,42,0.9);
-            border: 1px solid rgba(31,41,55,0.9);
-        }
-        .pill {
-            font-size: 0.75rem;
-            padding: 0.15rem 0.5rem;
-            border-radius: 999px;
-            border: 1px solid rgba(75,85,99,0.9);
-            background: rgba(15,23,42,0.9);
-            display: inline-flex;
-            gap: 0.4rem;
-            align-items: baseline;
-        }
-        .pill span {
-            color: #9ca3af;
-        }
-        .pill strong {
-            color: #e5e7eb;
         }
         .grid {
             display: grid;
@@ -130,59 +102,27 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 0.5rem;
         }
         .card-title span {
             font-size: 0.75rem;
             font-weight: 400;
             color: #9ca3af;
         }
-        .subgrid {
-            display: grid;
-            grid-template-columns: minmax(0, 2fr) minmax(0, 1.1fr);
-            gap: 1.1rem;
-        }
-        .status-block {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-        .status-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.8rem;
-            border-bottom: 1px dashed rgba(31,41,55,0.9);
-            padding: 0.25rem 0;
-            gap: 0.75rem;
-        }
-        .status-row-label {
-            color: #9ca3af;
-        }
-        .status-row-value {
-            text-align: right;
-        }
-        .status-row:last-child {
-            border-bottom: none;
-        }
-        .status-row-value.mono {
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-            font-size: 0.8rem;
-        }
         .traffic-container {
-            display: grid;
-            grid-template-columns: auto minmax(0, 1fr);
-            gap: 0.75rem;
-            align-items: center;
+            display: flex;
+            align-items: flex-start;
+            gap: 1.5rem;
         }
         .traffic {
-            width: 2.2rem;
-            height: 5.5rem;
-            border-radius: 2rem;
-            background: radial-gradient(circle at 20% 20%, #0f172a, #020617);
-            border: 1px solid rgba(15,23,42,0.9);
-            padding: 0.35rem 0.4rem;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
+            gap: 0.35rem;
+            padding: 0.6rem 0.7rem;
+            background: radial-gradient(circle at top, #020617 0, #020617 60%, #000 100%);
+            border-radius: 999px;
+            border: 1px solid #111827;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.7);
         }
         .light {
             width: 1.25rem;
@@ -213,55 +153,45 @@
         }
         .status-chip {
             display: inline-flex;
-            padding: 0.15rem 0.6rem;
+            padding: 0.15rem 0.5rem;
             border-radius: 999px;
             font-size: 0.75rem;
-            border: 1px solid rgba(55,65,81,0.9);
+            font-weight: 600;
             margin-left: 0.4rem;
         }
-        .status-chip span {
-            color: #9ca3af;
-            margin-right: 0.25rem;
-        }
-        .status-chip strong {
-            color: #e5e7eb;
-        }
-        .status-chip.chip-ok {
-            border-color: rgba(34,197,94,0.8);
-            background: rgba(22,163,74,0.2);
-        }
-        .status-chip.chip-warn {
-            border-color: rgba(249,115,22,0.8);
-            background: rgba(194,65,12,0.25);
-        }
-        .status-chip.chip-err {
-            border-color: rgba(239,68,68,0.8);
-            background: rgba(185,28,28,0.25);
-        }
+        .chip-ok { background:#065f46; color:#bbf7d0; }
+        .chip-warn { background:#92400e; color:#fed7aa; }
+        .chip-err { background:#7f1d1d; color:#fecaca; }
         .metrics {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 0.5rem;
-            margin-top: 0.4rem;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 0.65rem;
+            margin-top: 0.9rem;
+        }
+        @media (max-width: 700px) {
+            .metrics {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            }
         }
         .metric {
-            background: rgba(15,23,42,0.9);
-            border-radius: 0.6rem;
-            padding: 0.4rem 0.6rem 0.5rem;
-            border: 1px solid rgba(31,41,55,0.9);
+            padding: 0.55rem 0.7rem;
+            border-radius: 0.7rem;
+            background: #020617;
+            border: 1px solid #111827;
         }
         .metric-label {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.25rem;
         }
         .metric-value {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-top: 0.15rem;
+            font-size: 0.88rem;
+            font-variant-numeric: tabular-nums;
         }
         .metric-value.mono {
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-            font-size: 1rem;
         }
         .svc-lines {
             margin-top: 0.9rem;
@@ -277,90 +207,101 @@
             font-size: 0.8rem;
         }
         .svc-label {
-                        min-width: 5.5rem;
+            font-size: 0.7rem;
             color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            min-width: 8rem; /*9.5rem;*/
         }
         .svc-indicator {
             display: inline-flex;
             align-items: center;
-            gap: 0.35rem;
+            gap: 0.4rem;
         }
         .status-dot {
-            width: 0.55rem;
-            height: 0.55rem;
+            width: 0.65rem;
+            height: 0.65rem;
             border-radius: 999px;
-            border: 2px solid #020617;
-            background: #374151;
-            box-shadow: 0 0 0 1px rgba(15,23,42,0.9);
+            background: #4b5563;
+            box-shadow: 0 0 0 1px #020617;
         }
-        .status-dot.ok {
-            background: #22c55e;
-            box-shadow: 0 0 12px rgba(34,197,94,0.8);
+        .dot-ok {
+            background: radial-gradient(circle at 30% 20%, #bbf7d0, #22c55e);
+            box-shadow: 0 0 10px #22c55e;
         }
-        .status-dot.warn {
-            background: #facc15;
-            box-shadow: 0 0 12px rgba(250,204,21,0.8);
+        .dot-warn {
+            background: radial-gradient(circle at 30% 20%, #fef3c7, #facc15);
+            box-shadow: 0 0 10px #facc15;
         }
-        .status-dot.err {
-            background: #ef4444;
-            box-shadow: 0 0 12px rgba(239,68,68,0.8);
+        .dot-err {
+            background: radial-gradient(circle at 30% 20%, #fecaca, #ef4444);
+            box-shadow: 0 0 10px #ef4444;
         }
-        .svc-indicator .metric-value {
-            font-size: 0.85rem;
-        }
-        .tools-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 0.75rem;
-            margin-bottom: 0.4rem;
+        pre {
+            margin: 0.4rem 0 0;
+            padding: 0.7rem 0.8rem;
+            border-radius: 0.6rem;
+            background: #020617;
+            border: 1px solid #111827;
+            font-size: 0.78rem;
+            line-height: 1.4;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
         }
         .controls {
             display: flex;
             flex-wrap: wrap;
-            gap: 0.4rem;
-            margin-bottom: 0.2rem;
+            gap: 0.5rem;
+            align-items: center;
         }
         button {
+            appearance: none;
+            border: none;
             border-radius: 999px;
-            border: 1px solid rgba(148,163,184,0.9);
-            background: rgba(15,23,42,0.9);
-            color: #e5e7eb;
-            padding: 0.25rem 0.75rem;
-            font-size: 0.78rem;
+            padding: 0.45rem 0.9rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            background: #1d4ed8;
+            color: white;
+            cursor: pointer;
             display: inline-flex;
             align-items: center;
-            gap: 0.25rem;
-            cursor: pointer;
-            transition: background 0.1s ease, border-color 0.1s ease, transform 0.05s ease;
+            gap: 0.4rem;
+            box-shadow: 0 4px 12px rgba(37,99,235,0.45);
         }
         button:hover {
-            background: rgba(30,64,175,0.8);
-            border-color: rgba(129,140,248,1);
+            filter: brightness(1.05);
         }
-        button:active {
-            transform: translateY(1px);
+        button[disabled] {
+            opacity: 0.5;
+            cursor: default;
+            box-shadow: none;
         }
-        button:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
-        pre {
-            margin: 0;
-            margin-top: 0.25rem;
+        .note {
             font-size: 0.75rem;
-            padding: 0.4rem 0.5rem;
-            background: rgba(15,23,42,0.98);
-            border-radius: 0.5rem;
-            border: 1px solid rgba(31,41,55,0.9);
-            max-height: 260px;
-            overflow: auto;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            color: #9ca3af;
+        }
+        .pill {
+            font-size: 0.75rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 999px;
+            border: 1px solid #374151;
+        }
+        .pill span {
+            opacity: 0.7;
+        }
+        .footer {
+            margin-top: 1rem;
+            font-size: 0.7rem;
+            color: #6b7280;
         }
         .log-toggle {
+            font-size: 0.78rem;
             cursor: pointer;
-            font-size: 0.75rem;
-            color: #93c5fd;
+            padding: 0.25rem 0.5rem;
+            border-radius: 999px;
+            border: 1px solid #374151;
         }
     </style>
 </head>
@@ -380,91 +321,64 @@
                 <span class="badge">host: {{ hostname }}</span>
             </div>
             <div class="meta">
-                Uses <code>{{ script_path }}</code> for detail checks, and <code>{{ log_path }}</code> for history.
+                Script: {{ script_path }} · Log: {{ log_path }}
             </div>
-        </div>
-        <div>
-            <span id="statusLabelChip" class="pill"><span>Status:</span> <strong id="statusLabelText">—</strong></span>
         </div>
     </div>
 
     <div class="grid">
-        <!-- LEFT: main status -->
+
+        <!-- LEFT: Summary -->
         <div class="card">
             <div class="card-title">
                 Overall status
-                <span id="statusChip" class="status-chip status-chip-err" style="display:none;">
-                    <span>SYNC_RESULT:</span>
-                    <strong id="statusChipText"></strong>
-                </span>
+                <span id="statusLabelChip" class="pill"><span>Status:</span> <strong id="statusLabelText">—</strong></span>
             </div>
 
-            <div class="subgrid">
-                <div class="status-block">
-                    <div class="status-row">
-                        <div class="status-row-label">Last sync</div>
-                        <div class="status-row-value" id="lastSync">—</div>
-                    </div>
-                    <div class="status-row">
-                        <div class="status-row-label">Last restart</div>
-                        <div class="status-row-value" id="lastRestart">—</div>
-                    </div>
-                    <div class="status-row">
-                        <div class="status-row-label">Last file download</div>
-                        <div class="status-row-value" id="lastDownload">—</div>
-                    </div>
-                    <div class="status-row">
-                        <div class="status-row-label">Log summary</div>
-                        <div class="status-row-value mono" id="statusRaw">—</div>
-                    </div>
+            <div class="traffic-container">
+                <div class="traffic">
+                    <div id="lightRed" class="light"></div>
+                    <div id="lightYellow" class="light"></div>
+                    <div id="lightGreen" class="light"></div>
                 </div>
 
-                <div class="status-block">
-                    <div class="traffic-container">
-                        <div class="traffic">
-                            <div id="lightRed" class="light"></div>
-                            <div id="lightYellow" class="light"></div>
-                            <div id="lightGreen" class="light"></div>
+                <div>
+                    <div class="status-text-main">
+                        <span id="statusHeadline">Waiting for data…</span>
+                        <span id="statusChip" class="status-chip chip-err" style="display:none;"></span>
+                    </div>
+
+                    <div class="metrics">
+                        <div class="metric">
+                            <div class="metric-label">Remote count</div>
+                            <div id="gCount" class="metric-value mono">—</div>
                         </div>
+                        <div class="metric">
+                            <div class="metric-label">Local count</div>
+                            <div id="lCount" class="metric-value mono">—</div>
+                        </div>
+                    </div>
 
-                        <div>
-                            <div class="status-text-main">
-                                <span id="statusHeadline">Waiting for data…</span>
-                            </div>
-
-                            <div class="metrics">
-                                <div class="metric">
-                                    <div class="metric-label">Remote count</div>
-                                    <div id="gCount" class="metric-value mono">—</div>
-                                </div>
-                                <div class="metric">
-                                    <div class="metric-label">Local count</div>
-                                    <div id="lCount" class="metric-value mono">—</div>
-                                </div>
-                            </div>
-
-                            <div class="svc-lines">
-                                <div class="svc-line">
-                                    <span class="svc-label">Web service</span>
-                                    <span class="svc-indicator">
-                                        <span id="webSvcDot" class="status-dot"></span>
-                                        <span id="webSvcText" class="metric-value">CHECKING…</span>
-                                    </span>
-                                </div>
-                                <div class="svc-line">
-                                    <span class="svc-label">PicFrame service</span>
-                                    <span class="svc-indicator">
-                                        <span id="pfSvcDot" class="status-dot"></span>
-                                        <span id="pfSvcText" class="metric-value">CHECKING…</span>
-                                    </span>
-                                </div>
-                                <div class="svc-line">
-                                    <span class="svc-label">Current remote</span>
-                                    <span class="svc-indicator">
-                                        <span id="currentRemote" class="metric-value mono">—</span>
-                                    </span>
-                                </div>
-                            </div>
+                    <div class="svc-lines">
+                        <div class="svc-line">
+                            <span class="svc-label">Web status service</span>
+                            <span class="svc-indicator">
+                                <span id="webSvcDot" class="status-dot"></span>
+                                <span id="webSvcText" class="metric-value">CHECKING…</span>
+                            </span>
+                        </div>
+                        <div class="svc-line">
+                            <span class="svc-label">PicFrame service</span>
+                            <span class="svc-indicator">
+                                <span id="pfSvcDot" class="status-dot"></span>
+                                <span id="pfSvcText" class="metric-value">CHECKING…</span>
+                            </span>
+                        </div>
+                        <div class="svc-line">
+                            <span class="svc-label">Current remote</span>
+                            <span class="svc-indicator">
+                                <span id="currentRemote" class="metric-value mono">—</span>
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -481,11 +395,24 @@
             <div class="controls" style="margin-bottom:0.5rem;">
                 <button id="btnRefresh" type="button">↻ Refresh from log</button>
                 <button id="btnRunCheck" type="button">▶ Run chk_sync.sh --d</button>
+                <span class="note">
+                    Log-only view · chk_sync.sh --d runs only when requested.
+                </span>
             </div>
 
-            <div class="meta" style="margin-bottom:0.5rem;">
-                <div>Checks use <code>{{ script_path }}</code></div>
-                <div>Log file: <code>{{ log_path }}</code></div>
+            <div class="metric" style="margin:0.75rem 0 0.4rem;">
+                <div class="metric-label">Last run</div>
+                <div id="lastRun" class="metric-value mono">—</div>
+            </div>
+
+            <div class="metric" style="margin:0.25rem 0 0.4rem;">
+                <div class="metric-label">Last Service Restart</div>
+                <div id="lastRestart" class="metric-value mono">—</div>
+            </div>
+
+            <div class="metric" style="margin:0.25rem 0 1rem;">
+                <div class="metric-label">Last file download</div>
+                <div id="lastFileDownload" class="metric-value mono">—</div>
             </div>
 
             <div style="margin-top:0.5rem;">
@@ -500,9 +427,14 @@
 
             <div style="margin-top:0.6rem;">
                 <div class="meta">chk_sync.sh --d output:</div>
-                <pre id="chkOutput">Not run yet.</pre>
+                <pre id="checkOutput">(not run yet)</pre>
             </div>
         </div>
+
+    </div>
+
+    <div class="footer">
+        Auto-refreshes every 15 seconds · Designed for Pi on your LAN
     </div>
 </div>
 
@@ -524,38 +456,14 @@ function applyStatusLights(level) {
     }
 }
 
-function setText(id, value, fallback='—') {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.textContent = value || fallback;
-}
-
 function applyStatusChip(level, label) {
     const chip = document.getElementById('statusChip');
-    const chipText = document.getElementById('statusChipText');
-    if (!chip || !chipText) return;
-
-    chip.style.display = level ? 'inline-flex' : 'none';
+    chip.style.display = 'inline-flex';
+    chip.textContent = label || '';
     chip.className = 'status-chip';
-
-    if (level === 'ok') chip.classList.add('status-chip', 'chip-ok');
-    else if (level === 'warn') chip.classList.add('status-chip', 'chip-warn');
-    else if (level === 'err') chip.classList.add('status-chip', 'chip-err');
-
-    chipText.textContent = label || '';
-}
-
-function applyServiceStatus(dotId, textId, level, label) {
-    const dot = document.getElementById(dotId);
-    const text = document.getElementById(textId);
-    if (!dot || !text) return;
-
-    dot.className = 'status-dot';
-    if (level === 'ok') dot.classList.add('ok');
-    else if (level === 'warn') dot.classList.add('warn');
-    else if (level === 'err') dot.classList.add('err');
-
-    text.textContent = label || 'UNKNOWN';
+    if (level === 'ok')      chip.classList.add('chip-ok');
+    else if (level === 'warn') chip.classList.add('chip-warn');
+    else                       chip.classList.add('chip-err');
 }
 
 function applyBanner(level, headline, label, updatedAt) {
@@ -571,115 +479,122 @@ function applyBanner(level, headline, label, updatedAt) {
     document.getElementById('lastUpdated').textContent = 'Updated: ' + (updatedAt || '—');
 }
 
-function applyStatusLabel(level, label) {
-    const chip = document.getElementById('statusLabelChip');
-    const text = document.getElementById('statusLabelText');
-    chip.className = 'pill';
-    if (level === 'ok') chip.classList.add('chip-ok');
-    else if (level === 'warn') chip.classList.add('chip-warn');
-    else if (level === 'err') chip.classList.add('chip-err');
+function applyServiceStatus(dotId, textId, level, label) {
+    const dot = document.getElementById(dotId);
+    const text = document.getElementById(textId);
+
+    dot.className = 'status-dot';
+    if (level === 'ok') {
+        dot.classList.add('dot-ok');
+    } else if (level === 'warn') {
+        dot.classList.add('dot-warn');
+    } else {
+        dot.classList.add('dot-err');
+    }
+
     text.textContent = label || 'UNKNOWN';
 }
 
-async function fetchStatus() {
-    try {
-        const res = await fetch('/api/status');
-        const data = await res.json();
+function refreshStatus() {
+    fetch('/api/status')
+        .then(r => r.json())
+        .then(data => {
+            const level = data.level || 'err';
 
-        setText('lastSync', data.last_sync);
-        setText('lastRestart', data.last_restart);
-        if (data.last_file_download && data.last_file_download.time) {
-            const ld = data.last_file_download;
-            const src = ld.source || 'frame_sync.sh';
-            document.getElementById('lastDownload').textContent =
-                ld.time + ' (' + src + ')';
-        } else {
-            setText('lastDownload', null);
-        }
+            document.getElementById('statusHeadline').textContent = data.status_headline || 'Status unknown';
+            document.getElementById('lastRun').textContent = data.last_sync || '—';
+            document.getElementById('lastRestart').textContent = data.last_restart || '—';
+            document.getElementById('lastFileDownload').textContent = data.last_file_download || '—';
+            document.getElementById('gCount').textContent = (data.google_count ?? '—');
+            document.getElementById('lCount').textContent = (data.local_count ?? '—');
+            document.getElementById('currentRemote').textContent = data.current_remote || '—';
 
-        setText('statusRaw', data.status_raw);
-        setText('gCount', data.google_count != null ? data.google_count : null);
-        setText('lCount', data.local_count != null ? data.local_count : null);
-        setText('currentRemote', data.current_remote);
+            document.getElementById('statusLabelText').textContent = data.status_label || '—';
 
-        applyStatusLights(data.level || 'err');
-        applyStatusChip(data.level, data.status_label);
-        applyBanner(data.level, data.status_headline, data.status_label, data.generated_at);
-        applyStatusLabel(data.level, data.status_label);
+            const labelChip = document.getElementById('statusLabelChip');
+            labelChip.className = 'pill';
+            if (level === 'ok')      labelChip.style.borderColor = '#22c55e';
+            else if (level === 'warn') labelChip.style.borderColor = '#facc15';
+            else                      labelChip.style.borderColor = '#ef4444';
 
-        applyServiceStatus('webSvcDot', 'webSvcText',
-                           data.web_status_level, data.web_status_label);
-        applyServiceStatus('pfSvcDot', 'pfSvcText',
-                           data.pf_status_level, data.pf_status_label);
+            document.getElementById('logTail').textContent = data.log_tail || '(log is empty or missing)';
 
-        document.getElementById('logTail').textContent = data.log_tail || '(no log data)';
-    } catch (err) {
-        console.error('Error fetching status:', err);
-    }
+            applyStatusLights(level);
+            applyStatusChip(level, data.status_label || '');
+            applyBanner(level, data.status_headline, data.status_label, data.generated_at);
+
+            const webLevel = data.web_status_level || 'warn';
+            const webLabel = data.web_status_label || 'UNKNOWN';
+            applyServiceStatus('webSvcDot', 'webSvcText', webLevel, webLabel);
+
+            const pfLevel = data.pf_status_level || 'warn';
+            const pfLabel = data.pf_status_label || 'UNKNOWN';
+            applyServiceStatus('pfSvcDot', 'pfSvcText', pfLevel, pfLabel);
+        })
+        .catch(err => {
+            document.getElementById('logTail').textContent = 'Error loading status: ' + err;
+            applyStatusLights('err');
+            applyStatusChip('err', 'ERROR');
+            applyBanner('err', 'Error loading status', 'ERROR', '');
+            applyServiceStatus('webSvcDot', 'webSvcText', 'warn', 'UNKNOWN');
+            applyServiceStatus('pfSvcDot', 'pfSvcText', 'warn', 'UNKNOWN');
+        });
 }
 
-async function runChkDetailed() {
+function runCheck() {
     const btn = document.getElementById('btnRunCheck');
-    if (!btn) return;
     btn.disabled = true;
     btn.textContent = 'Running chk_sync.sh --d…';
 
-    try {
-        const res = await fetch('/api/run-check', { method: 'POST' });
-        const data = await res.json();
-        const out = [];
-        out.push('# chk_sync.sh --d');
-        out.push('Exit code: ' + data.exit_code);
-        if (data.stdout) {
-            out.push('');
-            out.push('STDOUT:');
-            out.push(data.stdout);
-        }
-        if (data.stderr) {
-            out.push('');
-            out.push('STDERR:');
-            out.push(data.stderr);
-        }
-        document.getElementById('chkOutput').textContent = out.join('\n');
+    fetch('/api/run-check')
+        .then(r => r.json())
+        .then(data => {
+            const out = [];
+            out.push('# chk_sync.sh --d run');
+            out.push('Exit code: ' + data.exit_code);
 
-        // Refresh status after running detailed check
-        fetchStatus();
-    } catch (err) {
-        console.error('Error running chk_sync.sh --d:', err);
-        document.getElementById('chkOutput').textContent =
-            'Error running chk_sync.sh --d: ' + err;
-    } finally {
-        btn.disabled = false;
-        btn.textContent = '▶ Run chk_sync.sh --d';
-    }
+            if (data.stdout) {
+                out.push('');
+                out.push('[stdout]');
+                out.push(data.stdout);
+            }
+            if (data.stderr) {
+                out.push('');
+                out.push('[stderr]');
+                out.push(data.stderr);
+            }
+
+            document.getElementById('checkOutput').textContent = out.join('\\n');
+            refreshStatus();
+        })
+        .catch(err => {
+            document.getElementById('checkOutput').textContent = 'Error running chk_sync: ' + err;
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.textContent = '▶ Run chk_sync.sh --d';
+        });
+}
+
+function setupLogToggle() {
+    const toggle = document.getElementById('logToggle');
+    const section = document.getElementById('logSection');
+    let open = false;
+
+    toggle.addEventListener('click', () => {
+        open = !open;
+        section.style.display = open ? 'block' : 'none';
+        toggle.textContent = open ? 'Hide log ▲' : 'Show log ▼';
+    });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    fetchStatus();
-    setInterval(fetchStatus, 30000);
-
-    const btnRefresh = document.getElementById('btnRefresh');
-    if (btnRefresh) {
-        btnRefresh.addEventListener('click', fetchStatus);
-    }
-
-    const btnRunCheck = document.getElementById('btnRunCheck');
-    if (btnRunCheck) {
-        btnRunCheck.addEventListener('click', runChkDetailed);
-    }
-
-    const logToggle = document.getElementById('logToggle');
-    const logSection = document.getElementById('logSection');
-    if (logToggle && logSection) {
-        logToggle.addEventListener('click', () => {
-            const visible = logSection.style.display !== 'none';
-            logSection.style.display = visible ? 'none' : 'block';
-            logToggle.textContent = visible ? 'Show log ▼' : 'Hide log ▲';
-        });
-    }
+    document.getElementById('btnRefresh').addEventListener('click', refreshStatus);
+    document.getElementById('btnRunCheck').addEventListener('click', runCheck);
+    setupLogToggle();
+    refreshStatus();
+    setInterval(refreshStatus, 15000);
 });
 </script>
 </body>
 </html>
-
-
