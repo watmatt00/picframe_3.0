@@ -503,16 +503,23 @@ function refreshStatus() {
 
             document.getElementById('statusHeadline').textContent = data.status_headline || 'Status unknown';
             document.getElementById('lastRun').textContent = data.last_sync || '—';
-            document.getElementById('lastRestart').textContent = data.last_restart || '—';
 
-            // FIX: last_file_download is an object; format it
-            const lfdEl = document.getElementById('lastFileDownload');
+            // Tools card: Last service restart from log
+            const lastRestartEl = document.getElementById('lastRestart');
+            if (data.last_restart) {
+                lastRestartEl.textContent = data.last_restart;
+            } else {
+                lastRestartEl.textContent = '—';
+            }
+
+            // Tools card: Last file download (object with time/source)
+            const lastFileEl = document.getElementById('lastFileDownload');
             if (data.last_file_download && data.last_file_download.time) {
                 const ld = data.last_file_download;
                 const src = ld.source || 'frame_sync.sh';
-                lfdEl.textContent = ld.time + ' (' + src + ')';
+                lastFileEl.textContent = ld.time + ' (' + src + ')';
             } else {
-                lfdEl.textContent = '—';
+                lastFileEl.textContent = '—';
             }
 
             document.getElementById('gCount').textContent = (data.google_count ?? '—');
@@ -556,7 +563,7 @@ function runCheck() {
     btn.disabled = true;
     btn.textContent = 'Running chk_sync.sh --d…';
 
-    // FIX: use POST to match /api/run-check methods=["POST"]
+    // Use POST to match /api/run-check methods=["POST"]
     fetch('/api/run-check', { method: 'POST' })
         .then(r => r.json())
         .then(data => {
