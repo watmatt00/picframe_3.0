@@ -1,9 +1,12 @@
 #!/bin/bash
 set -euo pipefail
-# chk_sync.sh / t_chk_sync.sh
-# Purpose: Quickly compare Google Drive folder vs. local directory using file counts by default.
-# Use --d for a detailed rclone check.
+# t_chk_sync.sh
+# Purpose: Quickly compare *current active* remote folder vs. local directory
+# using file counts by default. Use --d for a detailed rclone check.
 # When run in default (quick) mode, also shows a status summary via chk_status.sh.
+#
+# This version detects the active source (Google vs Koofr) based on the
+# frame_live symlink and adjusts REMOTE + LOCAL_DIR automatically.
 
 # -------------------------------------------------------------------
 # TTY / ENV SAFETY
@@ -15,11 +18,24 @@ if [[ -t 1 ]]; then
 fi
 
 # -------------------------------------------------------------------
-# CONFIGURATION 
+# CONFIGURATION (STATIC PATHS + REMOTES)
 # -------------------------------------------------------------------
-RCLONE_REMOTE="kfgdrive:dframe"
-LOCAL_DIR="/home/pi/Pictures/gdt_frame"
-RCLONE_OPTS="--one-way --log-level NOTICE"
+# Symlink PicFrame always reads from
+FRAME_LIVE="/home/pi/Pictures/frame_live"
+
+# Concrete local backing folders
+GDT_LOCAL="/home/pi/Pictures/gdt_frame"
+KFR_LOCAL="/home/pi/Pictures/kfr_frame"
+
+# Rclone remotes for each source
+GDT_REMOTE="kfgdrive:dframe"
+KFR_REMOTE="kfrphotos:KFR_kframe"
+
+# Defaults (if detection fails, fall back to Google)
+RCLONE_REMOTE="$GDT_REMOTE"
+LOCAL_DIR="$GDT_LOCAL"
+ACTIVE_SOURCE_ID="gdt"
+ACTIVE_SOURCE_LABEL="gdt - Google Drive (gdt_frame)"
 
 # Log file used by chk_status.sh
 LOG_FILE="${LOG_FILE:-$HOME/logs/frame_sync.log}"
@@ -27,6 +43,43 @@ LOG_FILE="${LOG_FILE:-$HOME/logs/frame_sync.log}"
 # Locate chk_status.sh in the same directory as this script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STATUS_SCRIPT="$SCRIPT_DIR/chk_status.sh"
+
+# -------------------------------------------------------------------
+# SOURCE DETECTION
+# -------------------------------------------------------------------
+detect_active_source() {
+    local target=""
+
+    if [[ -L "$FRAME_LIVE" ]]; then
+        # Resolve final target (handles nested symlinks if any)
+        target=$(readlink -f "$FRAME_LIVE" || true)
+    fi
+
+    case "$target" in
+        "$GDT_LOCAL")
+            ACTIVE_SOURCE_ID="gdt"
+            ACTIVE_SOURCE_LABEL="gdt - Google Drive (gdt_frame)"
+            RCLONE_REMOTE="$GDT_REMOTE"
+            LOCAL_DIR="$GDT_LOCAL"
+            ;;
+        "$KFR_LOCAL")
+            ACTIVE_SOURCE_ID="kfr"
+            ACTIVE_SOURCE_LABEL="kfr - Koofr (kfr_frame)"
+            RCLONE_REMOTE="$KFR_REMOTE"
+            LOCAL_DIR="$KFR_LOCAL"
+            ;;
+        "")
+            ACTIVE_SOURCE_ID="unknown"
+            ACTIVE_SOURCE_LABEL="frame_live not found or not a symlink"
+            # Keep defaults (Google) as a safe fallback
+            ;;
+        *)
+            ACTIVE_SOURCE_ID="unknown"
+            ACTIVE_SOURCE_LABEL="unknown source backing: $target"
+            # Keep defaults (Google) as a safe fallback
+            ;;
+    esac
+}
 
 # -------------------------------------------------------------------
 # FUNCTIONS
@@ -39,8 +92,13 @@ print_header() {
 
     echo
     echo "--------------------------------------------"
-    echo "   Google Drive vs Local Directory Check"
+    echo "   Remote vs Local Directory Check"
     echo "--------------------------------------------"
+    echo
+    echo "Active source: $ACTIVE_SOURCE_LABEL"
+    echo "  Source ID : $ACTIVE_SOURCE_ID"
+    echo "  Remote    : $RCLONE_REMOTE"
+    echo "  Local dir : $LOCAL_DIR"
     echo
 
     if [[ "$IS_TTY" -eq 1 ]]; then
@@ -57,7 +115,7 @@ print_header() {
 print_footer() {
     echo
     echo "--------------------------------------------"
-    echo "End of Google Drive vs Local Directory Check"
+    echo "End of Remote vs Local Directory Check"
     echo "--------------------------------------------"
 }
 
@@ -66,8 +124,15 @@ quick_check() {
     remote_count=$(rclone lsf "$RCLONE_REMOTE" --files-only | wc -l)
     local_count=$(find "$LOCAL_DIR" -type f | wc -l)
 
+    # These lines are safe for both CLI and dashboard parsing
     echo "Remote file count: $remote_count"
     echo "Local  file count: $local_count"
+
+    # Optional extra structured lines (handy for the web dashboard)
+    echo "SOURCE_ID: $ACTIVE_SOURCE_ID"
+    echo "SOURCE_LABEL: $ACTIVE_SOURCE_LABEL"
+    echo "REMOTE_PATH: $RCLONE_REMOTE"
+    echo "LOCAL_PATH: $LOCAL_DIR"
 
     if [ "$remote_count" -eq "$local_count" ]; then
         echo "✅ Quick check: File counts match."
@@ -79,7 +144,7 @@ quick_check() {
 detailed_check() {
     echo "Performing detailed rclone check (may take several minutes)..."
     set +e
-    OUTPUT=$(rclone check "$RCLONE_REMOTE" "$LOCAL_DIR" $RCLONE_OPTS 2>&1)
+    OUTPUT=$(rclone check "$RCLONE_REMOTE" "$LOCAL_DIR" 2>&1)
     RESULT=$?
     set -e
 
@@ -109,6 +174,9 @@ show_status_summary() {
 # -------------------------------------------------------------------
 # MAIN SCRIPT
 # -------------------------------------------------------------------
+# Figure out which source is active (Google vs Koofr) before anything else
+detect_active_source
+
 print_header
 
 default_mode=true
