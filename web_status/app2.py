@@ -5,7 +5,6 @@ import socket
 from pathlib import Path
 from datetime import datetime
 from flask import Flask, jsonify, render_template_string
-import re  # NEW: for parsing chk_sync.sh output
 
 app = Flask(__name__)
 
@@ -215,7 +214,7 @@ DASHBOARD_HTML = """
         .svc-lines {
             margin-top: 0.9rem;
             margin-left: -4.0rem;   /* pull WEB/PICFRAME/CURRENT REMOTE left */
-            display: flex;
+	    display: flex;
             flex-direction: column;
             gap: 0.3rem;
         }
@@ -399,6 +398,7 @@ DASHBOARD_HTML = """
                                 <span id="currentRemote" class="metric-value mono">—</span>
                             </span>
                         </div>
+                    </div>
 
                 </div>
             </div>
@@ -823,43 +823,6 @@ def parse_status_from_log():
     return data
 
 
-def get_counts_from_chk_sync():
-    """
-    Run chk_sync.sh and extract 'Remote file count' and 'Local  file count'
-    so dashboard counts always reflect the currently active source.
-    """
-    if not CHK_SCRIPT.exists():
-        return None, None
-
-    try:
-        result = subprocess.run(
-            [str(CHK_SCRIPT)],
-            capture_output=True,
-            text=True,
-            timeout=30,
-            check=False,
-        )
-        out = result.stdout or ""
-    except Exception:
-        return None, None
-
-    remote_count = None
-    local_count = None
-
-    for line in out.splitlines():
-        line = line.strip()
-        if line.startswith("Remote file count:"):
-            m = re.search(r"(\d+)$", line)
-            if m:
-                remote_count = int(m.group(1))
-        elif line.startswith("Local  file count:"):
-            m = re.search(r"(\d+)$", line)
-            if m:
-                local_count = int(m.group(1))
-
-    return remote_count, local_count
-
-
 def get_web_service_status():
     info = {
         "web_status_level": "warn",
@@ -963,15 +926,7 @@ def dashboard():
 
 @app.route("/api/status")
 def api_status():
-    # Base info from log (last run, restart, file download, status label, etc.)
     status = parse_status_from_log()
-    # Live counts from chk_sync.sh for the *current* remote
-    rc, lc = get_counts_from_chk_sync()
-    if rc is not None:
-        status["google_count"] = rc  # semantic: this is actually the remote count
-    if lc is not None:
-        status["local_count"] = lc
-
     status["generated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     status.update(get_web_service_status())
     status.update(get_picframe_service_status())
