@@ -405,7 +405,7 @@ DASHBOARD_HTML = """
                                 <span id="currentRemote" class="metric-value mono">—</span>
                             </span>
                         </div>
-
+                    </div>
                 </div>
             </div>
         </div>
