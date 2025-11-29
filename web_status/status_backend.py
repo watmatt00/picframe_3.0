@@ -186,64 +186,88 @@ def parse_log(path: Path):
 
 def _systemctl_status(service: str, user: bool = False) -> str:
     """
-    Improved user service detection.
-    Works even when called from a system service (pf-web-status).
-
-    For user services (picframe.service):
-        systemctl --user --machine=pi@ is-active picframe.service
+    Service status helper.
 
     For system services (pf-web-status.service):
-        systemctl is-active pf-web-status.service
+        systemctl is-active SERVICE
+
+    For user services (picframe.service):
+        1) try:  loginctl enable-linger pi
+        2) try:  systemctl --user --machine=pi@ is-active SERVICE
+        3) fallback: if that fails or returns unknown, use pgrep
+           (any 'picframe' process owned by pi => treat as 'active')
     """
     env = os.environ.copy()
     env.setdefault("PATH",
         "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
 
     try:
-        if user:
-            # Ensure linger is enabled so user services run outside login sessions
-            subprocess.run(
-                ["loginctl", "enable-linger", "pi"],
-                text=True,
-                capture_output=True,
-                timeout=5,
-                check=False,
-            )
-
-            # Query picframe.service as the pi user
-            cmd = [
-                "systemctl",
-                "--user",
-                "--machine=pi@",
-                "is-active",
-                service
-            ]
-        else:
+        if not user:
             # Normal system-level service
             cmd = ["systemctl", "is-active", service]
+            out = subprocess.run(
+                cmd,
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=10,
+                env=env,
+            )
+            status = out.stdout.strip() or out.stderr.strip() or "unknown"
+            if "failed to connect" in status.lower():
+                status = "unknown"
+            return status
 
+        # User service branch (picframe.service)
+        # Try to ensure linger (so user services run without a login session)
+        subprocess.run(
+            ["loginctl", "enable-linger", "pi"],
+            text=True,
+            capture_output=True,
+            timeout=5,
+            check=False,
+            env=env,
+        )
+
+        cmd_user = [
+            "systemctl",
+            "--user",
+            "--machine=pi@",
+            "is-active",
+            service,
+        ]
         out = subprocess.run(
-            cmd,
+            cmd_user,
             text=True,
             capture_output=True,
             check=False,
             timeout=10,
             env=env,
         )
-
-        status = out.stdout.strip() or out.stderr.strip()
-        if not status:
-            status = "unknown"
-
-        # Normalize bad output
+        status = out.stdout.strip() or out.stderr.strip() or "unknown"
         if "failed to connect" in status.lower():
             status = "unknown"
+
+        # Fallback: if still unknown, check for a running picframe process
+        if status == "unknown":
+            try:
+                p = subprocess.run(
+                    ["pgrep", "-u", "pi", "-f", "picframe"],
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                    timeout=5,
+                    env=env,
+                )
+                if p.returncode == 0 and (p.stdout or p.stderr):
+                    status = "active"
+            except Exception:
+                pass
 
         return status
 
     except Exception:
         return "unknown"
-
 
 
 def _current_remote_from_conf(conf_path: Path) -> str:
@@ -287,10 +311,8 @@ def _current_remote_from_quick(raw_lines) -> str:
         stripped = line.strip()
         lower = stripped.lower()
         if lower.startswith("active source:"):
-            # after = "kfr - Koofr (kfr_frame)"
             try:
                 after = stripped.split(":", 1)[1].strip()
-                # Prefer the human label part after the dash, if present
                 if " - " in after:
                     parts = after.split(" - ", 1)
                     label = parts[1].strip()
@@ -372,7 +394,6 @@ def get_status_payload():
         }
 
     except Exception as e:
-        # Absolutely last-resort fallback so /api/status still returns JSON
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         debug["top_level_error"] = str(e)
 
