@@ -65,6 +65,7 @@ def run_quick_check():
             "raw_output": [],
         }
 
+    # Combine stdout + stderr (non-TTY runs may print to stderr)
     combined = ""
     if result.stdout:
         combined += result.stdout
@@ -79,22 +80,24 @@ def run_quick_check():
         stripped = line.strip()
         lower = stripped.lower()
 
-        if "remote file count:" in stripped:
-            # tolerate stuff before the text (colours, emoji, etc.)
+        # --- counts ---
+        if "remote file count" in lower:
+            # tolerate extra text, emojis, etc.
             try:
                 after = stripped.split(":", 1)[1].strip()
                 remote_count = int(after.split()[0])
             except Exception:
                 pass
 
-        elif "local  file count:" in stripped:
+        elif "local" in lower and "file count" in lower:
             try:
                 after = stripped.split(":", 1)[1].strip()
                 local_count = int(after.split()[0])
             except Exception:
                 pass
 
-        if "quick check:" in lower:
+        # --- quick status line ---
+        if "quick check" in lower:
             if "match" in lower:
                 quick_status = "match"
             elif "differ" in lower:
