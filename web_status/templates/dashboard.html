@@ -4,635 +4,663 @@
     <meta charset="utf-8">
     <title>PicFrame Sync Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+
     <style>
         :root {
             color-scheme: dark;
+        }
+        * {
+            box-sizing: border-box;
         }
         body {
             margin: 0;
             padding: 0;
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background: radial-gradient(circle at top, #111827 0, #020617 55%, #000 100%);
-            color: #e5e7eb;
+            background: radial-gradient(circle at top left, #1b2238 0, #050712 40%, #020308 100%);
+            color: #f9fafb;
         }
-        .banner {
-            padding: 0.55rem 1.5rem;
+        .page {
+            min-height: 100vh;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 0.75rem;
+            flex-direction: column;
+        }
+        header {
+            padding: 0.75rem 1.75rem;
+            background: linear-gradient(90deg, #0b7a39, #059669);
             font-size: 0.9rem;
-            border-bottom: 1px solid rgba(15,23,42,0.9);
-        }
-        .banner-ok {
-            background: linear-gradient(90deg, #065f46, #16a34a);
-        }
-        .banner-warn {
-            background: linear-gradient(90deg, #92400e, #d97706);
-        }
-        .banner-err {
-            background: linear-gradient(90deg, #7f1d1d, #b91c1c);
-        }
-        .banner-left {
-            font-weight: 500;
-        }
-        .banner-right {
-            font-size: 0.78rem;
-            opacity: 0.9;
-        }
-        .shell {
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 1.4rem 1.5rem 1.5rem;
-        }
-        .header {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 1.25rem;
-        }
-        .title {
-            font-size: 1.6rem;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
             font-weight: 600;
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            gap: 0.75rem;
         }
-        .badge {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.07em;
+        header .status-text {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        header .status-pill {
             padding: 0.15rem 0.6rem;
             border-radius: 999px;
-            border: 1px solid #4b5563;
-            color: #e5e7eb;
+            background: rgba(15, 23, 42, 0.18);
+            font-size: 0.75rem;
         }
-        .meta {
-            font-size: 0.8rem;
-            color: #9ca3af;
+        main {
+            flex: 1;
+            padding: 1.5rem 1.75rem 2.5rem 1.75rem;
         }
-        .grid {
-            display: grid;
-            grid-template-columns: minmax(0, 3.2fr) minmax(0, 2.5fr);
-            gap: 1.25rem;
-            align-items: start;
-        }
-        @media (max-width: 900px) {
-            .grid {
-                grid-template-columns: minmax(0, 1fr);
-            }
+        .top-row {
+            display: flex;
+            gap: 1.5rem;
+            align-items: flex-start;
         }
         .card {
-            background: rgba(15,23,42,0.96);
-            border-radius: 0.9rem;
-            padding: 1.25rem 1.4rem;
-            border: 1px solid rgba(55,65,81,0.9);
-            box-shadow: 0 10px 35px rgba(0,0,0,0.6);
+            border-radius: 1.25rem;
+            background: radial-gradient(circle at top left, rgba(148, 163, 184, 0.18), rgba(15, 23, 42, 0.96));
+            box-shadow:
+                0 24px 60px rgba(15, 23, 42, 0.8),
+                0 0 0 1px rgba(15, 23, 42, 0.7);
+            padding: 1.5rem 1.75rem 1.5rem 1.75rem;
+        }
+        .overall-card {
+            flex: 1.15;
         }
         .tools-card {
-            margin-top: 0rem;
+            flex: 0.85;
+        }
+        .card-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 1.5rem;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 1rem;
         }
         .card-title {
-            font-size: 0.9rem;
+            font-size: 1.6rem;
+            font-weight: 650;
+            letter-spacing: 0.03em;
+        }
+        .host-pill {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.65rem;
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
             font-weight: 600;
-            color: #d1d5db;
-            margin-bottom: 0.5rem;
+        }
+        .host-pill span {
+            opacity: 0.7;
+        }
+        .meta-line {
+            margin-top: 0.35rem;
+            font-size: 0.78rem;
+            opacity: 0.7;
+        }
+        .overall-inner {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 1.5rem;
+            align-items: center;
+        }
+        .traffic-rail {
+            width: 52px;
+            height: 140px;
+            border-radius: 30px;
+            background: radial-gradient(circle at top, #020617, #020617 40%, #020617 100%);
+            box-shadow:
+                inset 0 0 0 1px rgba(15, 23, 42, 0.9),
+                0 0 0 1px rgba(15, 23, 42, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 0.8rem;
+            padding: 0.75rem 0;
+        }
+        .traffic-light {
+            width: 26px;
+            height: 26px;
+            border-radius: 999px;
+            background: radial-gradient(circle at 30% 20%, #22c55e, #16a34a 60%, #14532d);
+            box-shadow:
+                0 0 15px rgba(34, 197, 94, 0.7),
+                inset 0 0 0 1px rgba(22, 163, 74, 0.9);
+        }
+        .traffic-light.off {
+            background: radial-gradient(circle at 30% 20%, #0f172a, #020617 60%, #000);
+            box-shadow:
+                inset 0 0 0 1px rgba(15, 23, 42, 0.8);
+        }
+        .status-label {
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .status-chip {
+            font-size: 0.78rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+            background: rgba(22, 163, 74, 0.12);
+            border: 1px solid rgba(22, 163, 74, 0.6);
+        }
+        .status-chip.error {
+            background: rgba(220, 38, 38, 0.12);
+            border-color: rgba(248, 113, 113, 0.6);
+        }
+        .status-chip.warn {
+            background: rgba(234, 179, 8, 0.12);
+            border-color: rgba(250, 204, 21, 0.6);
+        }
+        .K {
+            border-radius: 0.4rem;
+            background: radial-gradient(circle at top left, rgba(148, 163, 184, 0.16), rgba(15, 23, 42, 0.96));
+            padding: 0.8rem 1.1rem;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.17em;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+        .K-dot {
+            width: 0.55rem;
+            height: 0.55rem;
+            border-radius: 999px;
+            background: #22c55e;
+            box-shadow: 0 0 6px rgba(34, 197, 94, 0.7);
+        }
+        .count-row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.9rem;
+            margin-top: 1rem;
+        }
+        .count-tile {
+            padding: 0.85rem 1rem;
+            border-radius: 0.9rem;
+            background: radial-gradient(circle at top left, rgba(30, 64, 175, 0.3), rgba(15, 23, 42, 0.96));
+            box-shadow:
+                0 18px 40px rgba(15, 23, 42, 0.8),
+                0 0 0 1px rgba(15, 23, 42, 0.7);
+        }
+        .count-label {
+            font-size: 0.74rem;
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+            opacity: 0.76;
+            margin-bottom: 0.25rem;
+        }
+        .count-value {
+            font-size: 1.35rem;
+            font-variant-numeric: tabular-nums;
+            font-weight: 650;
+        }
+        .service-grid {
+            display: grid;
+            grid-template-columns: auto auto;
+            column-gap: 2.5rem;
+            row-gap: 0.35rem;
+            margin-top: 1.2rem;
+            font-size: 0.9rem;
+        }
+        .service-label {
+            opacity: 0.75;
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+            font-size: 0.72rem;
+        }
+        .service-value {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+        .status-dot {
+            width: 0.55rem;
+            height: 0.55rem;
+            border-radius: 999px;
+            background: #22c55e;
+            box-shadow: 0 0 6px rgba(34, 197, 94, 0.75);
+        }
+        .status-dot.off {
+            background: #6b7280;
+            box-shadow: none;
+        }
+        .remote-label {
+            font-size: 0.88rem;
+        }
+        .tools-card-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            gap: 0.5rem;
+            margin-bottom: 1rem;
         }
-        .card-title span {
-            font-size: 0.75rem;
-            font-weight: 400;
-            color: #9ca3af;
-        }
-        .traffic-container {
-            display: flex;
-            align-items: flex-start;
-            gap: 1.5rem;
-        }
-        .traffic {
-            display: flex;
-            flex-direction: column;
-            gap: 0.35rem;
-            padding: 0.6rem 0.7rem;
-            background: radial-gradient(circle at top, #020617 0, #020617 60%, #000 100%);
-            border-radius: 999px;
-            border: 1px solid #111827;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.7);
-        }
-        .light {
-            width: 1.25rem;
-            height: 1.25rem;
-            border-radius: 999px;
-            background: #111827;
-            box-shadow: 0 0 0 1px #020617;
-            opacity: 0.25;
-        }
-        .light.on-green {
-            background: radial-gradient(circle at 30% 20%, #bbf7d0, #22c55e);
-            box-shadow: 0 0 18px #22c55e;
-            opacity: 1;
-        }
-        .light.on-yellow {
-            background: radial-gradient(circle at 30% 20%, #fef3c7, #facc15);
-            box-shadow: 0 0 18px #facc15;
-            opacity: 1;
-        }
-        .light.on-red {
-            background: radial-gradient(circle at 30% 20%, #fecaca, #ef4444);
-            box-shadow: 0 0 20px #ef4444;
-            opacity: 1;
-        }
-        .status-text-main {
-            font-size: 1.1rem;
-            font-weight: 500;
-        }
-        .status-chip {
-            display: inline-flex;
-            padding: 0.15rem 0.5rem;
-            border-radius: 999px;
-            font-size: 0.75rem;
+        .tools-title {
             font-weight: 600;
-            margin-left: 0.4rem;
-        }
-        .chip-ok { background:#065f46; color:#bbf7d0; }
-        .chip-warn { background:#92400e; color:#fed7aa; }
-        .chip-err { background:#7f1d1d; color:#fecaca; }
-        .metrics {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 0.65rem;
-            margin-top: 0.9rem;
-        }
-        @media (max-width: 700px) {
-            .metrics {
-                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            }
-        }
-        .metric {
-            padding: 0.55rem 0.7rem;
-            border-radius: 0.7rem;
-            background: #020617;
-            border: 1px solid #111827;
-        }
-        .metric-label {
-            font-size: 0.7rem;
-            color: #9ca3af;
-            text-transform: uppercase;
             letter-spacing: 0.08em;
-            margin-bottom: 0.25rem;
-        }
-        .metric-value {
-            font-size: 0.88rem;
-            font-variant-numeric: tabular-nums;
-        }
-        .metric-value.mono {
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-        }
-        .svc-lines {
-            margin-top: 0.9rem;
-            margin-left: -4.0rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.3rem;
-        }
-        .svc-line {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            text-transform: uppercase;
             font-size: 0.8rem;
+            opacity: 0.8;
         }
-        .svc-label {
+        .tools-subtitle {
             font-size: 0.7rem;
-            color: #9ca3af;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            min-width: 8rem;
+            opacity: 0.65;
         }
-        .svc-indicator {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-        }
-        .status-dot {
-            width: 0.65rem;
-            height: 0.65rem;
-            border-radius: 999px;
-            background: #4b5563;
-            box-shadow: 0 0 0 1px #020617;
-        }
-        .dot-ok {
-            background: radial-gradient(circle at 30% 20%, #bbf7d0, #22c55e);
-            box-shadow: 0 0 10px #22c55e;
-        }
-        .dot-warn {
-            background: radial-gradient(circle at 30% 20%, #fef3c7, #facc15);
-            box-shadow: 0 0 10px #facc15;
-        }
-        .dot-err {
-            background: radial-gradient(circle at 30% 20%, #fecaca, #ef4444);
-            box-shadow: 0 0 10px #ef4444;
-        }
-        pre {
-            margin: 0.4rem 0 0;
-            padding: 0.7rem 0.8rem;
-            border-radius: 0.6rem;
-            background: #020617;
-            border: 1px solid #111827;
-            font-size: 0.78rem;
-            line-height: 1.4;
-            overflow-x: auto;
-            white-space: pre-wrap;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-        }
-        .controls {
+        .button-row {
             display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 1.1rem;
         }
         button {
-            appearance: none;
             border: none;
-            border-radius: 999px;
-            padding: 0.45rem 0.9rem;
-            font-size: 0.8rem;
-            font-weight: 500;
-            background: #1d4ed8;
-            color: white;
             cursor: pointer;
+            font-family: inherit;
+        }
+        .btn {
+            font-size: 0.8rem;
+            padding: 0.5rem 0.9rem;
+            border-radius: 999px;
             display: inline-flex;
             align-items: center;
-            gap: 0.4rem;
-            box-shadow: 0 4px 12px rgba(37,99,235,0.45);
+            gap: 0.35rem;
+            font-weight: 500;
+            background: radial-gradient(circle at top left, #2563eb, #1d4ed8);
+            color: #e5f3ff;
+            box-shadow:
+                0 14px 28px rgba(37, 99, 235, 0.6),
+                0 0 0 1px rgba(30, 64, 175, 0.9);
         }
-        button:hover {
-            filter: brightness(1.05);
+        .btn.secondary {
+            background: radial-gradient(circle at top left, #111827, #020617);
+            color: #e5e7eb;
+            box-shadow:
+                0 14px 26px rgba(15, 23, 42, 0.7),
+                0 0 0 1px rgba(55, 65, 81, 0.9);
         }
-        button[disabled] {
-            opacity: 0.5;
+        .btn:disabled {
+            opacity: 0.6;
             cursor: default;
             box-shadow: none;
         }
-        .note {
-            font-size: 0.75rem;
-            color: #9ca3af;
-        }
-        .pill {
-            font-size: 0.75rem;
-            padding: 0.15rem 0.5rem;
+        .btn-spinner {
+            width: 0.85rem;
+            height: 0.85rem;
             border-radius: 999px;
-            border: 1px solid #374151;
+            border: 2px solid rgba(191, 219, 254, 0.5);
+            border-top-color: transparent;
+            animation: spin 0.7s linear infinite;
         }
-        .pill span {
-            opacity: 0.7;
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
-        .footer {
-            margin-top: 1rem;
+        .pill-stack-row {
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+            margin-bottom: 1.1rem;
+        }
+        .pill-block {
+            padding: 0.6rem 0.75rem;
+            border-radius: 0.7rem;
+            background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.96), rgba(3, 7, 18, 1));
+        }
+        .pill-block-label {
             font-size: 0.7rem;
-            color: #6b7280;
+            opacity: 0.7;
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+            margin-bottom: 0.18rem;
+        }
+        .pill-block-value {
+            font-size: 0.86rem;
+            font-variant-numeric: tabular-nums;
+        }
+        .log-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.3rem;
+            margin-top: 0.7rem;
+            font-size: 0.74rem;
+            text-transform: uppercase;
+            letter-spacing: 0.17em;
+            opacity: 0.78;
+        }
+        .log-text {
+            margin-top: 0.4rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.72rem;
+            line-height: 1.5;
+            max-height: 8.5rem;
+            overflow: auto;
+            padding: 0.55rem 0.7rem;
+            border-radius: 0.6rem;
+            background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.96), rgba(3, 7, 18, 1));
+            border: 1px solid rgba(31, 41, 55, 0.8);
+            white-space: pre-wrap;
         }
         .log-toggle {
-            font-size: 0.78rem;
-            cursor: pointer;
-            padding: 0.25rem 0.5rem;
+            font-size: 0.72rem;
+            padding: 0.3rem 0.65rem;
             border-radius: 999px;
-            border: 1px solid #374151;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(55, 65, 81, 0.9);
+            color: #e5e7eb;
+            cursor: pointer;
+        }
+        footer {
+            font-size: 0.72rem;
+            opacity: 0.55;
+            padding: 0.35rem 1.75rem 0.75rem 1.75rem;
+        }
+        @media (max-width: 900px) {
+            .top-row {
+                flex-direction: column;
+            }
+            .overall-card, .tools-card {
+                width: 100%;
+            }
         }
     </style>
 </head>
 <body>
-<div id="statusBanner" class="banner banner-err">
-    <div class="banner-left" id="bannerHeadline">Sync status</div>
-    <div class="banner-right">
-        <span id="bannerLabel">ERROR</span> · <span id="lastUpdated">Loading…</span>
-    </div>
-</div>
-
-<div class="shell">
-    <div class="header">
-        <div>
-            <div class="title">
-                PicFrame Sync Dashboard
-                <span class="badge">host: {{ hostname }}</span>
-            </div>
-            <div class="meta">
-                Script: {{ script_path }} · Log: {{ log_path }}
-            </div>
+<div class="page">
+    <header id="top-banner">
+        <div class="status-text">
+            <span id="banner-text">Last sync status</span>
+            <span class="status-pill" id="banner-pill">--</span>
         </div>
-    </div>
+        <div id="banner-updated">Updated: --</div>
+    </header>
 
-    <div class="grid">
-
-        <!-- LEFT: Summary -->
-        <div class="card">
-            <div class="card-title">
-                Overall status
-                <span id="statusLabelChip" class="pill"><span>Status:</span> <strong id="statusLabelText">—</strong></span>
+    <main>
+        <div class="card-header-top">
+            <div>
+                <div class="card-title">PicFrame Sync Dashboard</div>
+                <div class="meta-line">
+                    Script: {{ script_path }} · Log: {{ log_path }}
+                </div>
             </div>
-
-            <div class="traffic-container">
-                <div class="traffic">
-                    <div id="lightRed" class="light"></div>
-                    <div id="lightYellow" class="light"></div>
-                    <div id="lightGreen" class="light"></div>
-                </div>
-
-                <div>
-                    <div class="status-text-main">
-                        <span id="statusHeadline">Waiting for data…</span>
-                        <span id="statusChip" class="status-chip chip-err" style="display:none;"></span>
-                    </div>
-
-                    <div class="metrics">
-                        <div class="metric">
-                            <div class="metric-label">Remote count</div>
-                            <div id="gCount" class="metric-value mono">—</div>
-                        </div>
-                        <div class="metric">
-                            <div class="metric-label">Local count</div>
-                            <div id="lCount" class="metric-value mono">—</div>
-                        </div>
-                    </div>
-
-                    <div class="svc-lines">
-                        <div class="svc-line">
-                            <span class="svc-label">Web status service</span>
-                            <span class="svc-indicator">
-                                <span id="webSvcDot" class="status-dot"></span>
-                                <span id="webSvcText" class="metric-value">CHECKING…</span>
-                            </span>
-                        </div>
-                        <div class="svc-line">
-                            <span class="svc-label">PicFrame service</span>
-                            <span class="svc-indicator">
-                                <span id="pfSvcDot" class="status-dot"></span>
-                                <span id="pfSvcText" class="metric-value">CHECKING…</span>
-                            </span>
-                        </div>
-                        <div class="svc-line">
-                            <span class="svc-label">Current remote</span>
-                            <span class="svc-indicator">
-                                <span id="currentRemote" class="metric-value mono">—</span>
-                            </span>
-                        </div>
-                    </div>
-                </div>
+            <div class="host-pill">
+                <span>Host</span>&nbsp; <strong id="host-name">{{ host_name }}</strong>
             </div>
         </div>
 
-        <!-- RIGHT: tools -->
-        <div class="card tools-card">
-            <div class="card-title">
-                Activity & tools
-                <span>Uses log; chk_sync on demand</span>
-            </div>
+        <div class="top-row">
+            <!-- Overall status card -->
+            <section class="card overall-card">
+                <div class="card-header">
+                    <div class="status-label">
+                        <span id="overall-title">Status unknown</span>
+                        <span class="status-chip" id="overall-chip">--</span>
+                    </div>
+                    <div class="K">
+                        <span class="K-dot"></span>
+                        <span id="k-status-text">status · unknown</span>
+                    </div>
+                </div>
+                <div class="overall-inner">
+                    <div class="traffic-rail">
+                        <div class="traffic-light" id="traffic-green"></div>
+                        <div class="traffic-light off" id="traffic-amber"></div>
+                        <div class="traffic-light off" id="traffic-red"></div>
+                    </div>
+                    <div>
+                        <div class="count-row">
+                            <div class="count-tile">
+                                <div class="count-label">Remote count</div>
+                                <div class="count-value" id="remote-count">--</div>
+                            </div>
+                            <div class="count-tile">
+                                <div class="count-label">Local count</div>
+                                <div class="count-value" id="local-count">--</div>
+                            </div>
+                        </div>
 
-            <div class="controls" style="margin-bottom:0.5rem;">
-                <button id="btnRefresh" type="button">↻ Refresh from log</button>
-                <button id="btnRunCheck" type="button">▶ Run chk_sync.sh --d</button>
-                <span class="note">
-                    Log-only view · chk_sync.sh --d runs only when requested.
-                </span>
-            </div>
+                        <div class="service-grid">
+                            <div class="service-label">Web status service</div>
+                            <div class="service-value">
+                                <span class="status-dot" id="web-status-dot"></span>
+                                <span id="web-status-text">UNKNOWN</span>
+                            </div>
 
-            <div class="metric" style="margin:0.75rem 0 0.4rem;">
-                <div class="metric-label">Last run</div>
-                <div id="lastRun" class="metric-value mono">—</div>
-            </div>
+                            <div class="service-label">Picframe service</div>
+                            <div class="service-value">
+                                <span class="status-dot" id="pf-status-dot"></span>
+                                <span id="pf-status-text">UNKNOWN</span>
+                            </div>
 
-            <div class="metric" style="margin:0.25rem 0 0.4rem;">
-                <div class="metric-label">Last Service Restart</div>
-                <div id="lastRestart" class="metric-value mono">—</div>
-            </div>
+                            <div class="service-label">Current remote</div>
+                            <div class="service-value remote-label" id="current-remote">--</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-            <div class="metric" style="margin:0.25rem 0 1rem;">
-                <div class="metric-label">Last file download</div>
-                <div id="lastFileDownload" class="metric-value mono">—</div>
-            </div>
+            <!-- Activity & tools card -->
+            <section class="card tools-card">
+                <div class="tools-card-header">
+                    <div>
+                        <div class="tools-title">Activity &amp; tools</div>
+                        <div class="tools-subtitle">Uses log; chk_sync.sh on demand</div>
+                    </div>
+                </div>
 
-            <div style="margin-top:0.5rem;">
-                <div class="meta" style="display:flex;justify-content:space-between;align-items:center;gap:0.5rem;">
+                <div class="button-row">
+                    <button class="btn secondary" id="btn-refresh">
+                        <span id="btn-refresh-icon">⟳</span>
+                        <span>Refresh from log</span>
+                    </button>
+                    <button class="btn" id="btn-run-d">
+                        <div class="btn-spinner" id="btn-run-d-spinner" style="display:none;"></div>
+                        <span id="btn-run-d-label">Run chk_sync.sh --d</span>
+                    </button>
+                </div>
+
+                <div class="pill-stack-row">
+                    <div class="pill-block">
+                        <div class="pill-block-label">Last run</div>
+                        <div class="pill-block-value" id="last-run">--</div>
+                    </div>
+                    <div class="pill-block">
+                        <div class="pill-block-label">Last service restart</div>
+                        <div class="pill-block-value" id="last-restart">--</div>
+                    </div>
+                    <div class="pill-block">
+                        <div class="pill-block-label">Last file download</div>
+                        <div class="pill-block-value" id="last-download">--</div>
+                    </div>
+                </div>
+
+                <div class="log-section-header">
                     <span>Log tail (from frame_sync.log)</span>
-                    <span id="logToggle" class="log-toggle">Show log ▼</span>
+                    <button class="log-toggle" id="log-toggle">Hide log ▾</button>
                 </div>
-                <div id="logSection" style="display:none;">
-                    <pre id="logTail">Loading…</pre>
-                </div>
-            </div>
+                <div class="log-text" id="log-tail"></div>
 
-            <div style="margin-top:0.6rem;">
-                <div class="meta">chk_sync.sh --d output:</div>
-                <pre id="checkOutput">(not run yet)</pre>
-            </div>
+                <div class="log-section-header" style="margin-top: 0.9rem;">
+                    <span>chk_sync.sh -d output</span>
+                </div>
+                <div class="log-text" id="chk-d-output">(not run yet)</div>
+            </section>
         </div>
+    </main>
 
-    </div>
-
-    <div class="footer">
+    <footer>
         Auto-refreshes every 15 seconds · Designed for Pi on your LAN
-    </div>
+    </footer>
 </div>
 
 <script>
-// --- helpers ----------------------------------------------------
-function applyStatusLights(level) {
-    const red   = document.getElementById('lightRed');
-    const yellow= document.getElementById('lightYellow');
-    const green = document.getElementById('lightGreen');
-    red.className = 'light';
-    yellow.className = 'light';
-    green.className = 'light';
+    const bannerText = document.getElementById("banner-text");
+    const bannerPill = document.getElementById("banner-pill");
+    const bannerUpdated = document.getElementById("banner-updated");
+    const topBanner = document.getElementById("top-banner");
 
-    if (level === 'ok') {
-        green.classList.add('on-green');
-    } else if (level === 'warn') {
-        yellow.classList.add('on-yellow');
-    } else {
-        red.classList.add('on-red');
-    }
-}
+    const overallTitle = document.getElementById("overall-title");
+    const overallChip = document.getElementById("overall-chip");
+    const kStatusText = document.getElementById("k-status-text");
 
-function applyStatusChip(level, label) {
-    const chip = document.getElementById('statusChip');
-    chip.style.display = 'inline-flex';
-    chip.textContent = label || '';
-    chip.className = 'status-chip';
-    if (level === 'ok')      chip.classList.add('chip-ok');
-    else if (level === 'warn') chip.classList.add('chip-warn');
-    else                       chip.classList.add('chip-err');
-}
+    const trafficGreen = document.getElementById("traffic-green");
+    const trafficAmber = document.getElementById("traffic-amber");
+    const trafficRed = document.getElementById("traffic-red");
 
-function applyBanner(level, headline, label, updatedAt) {
-    const banner = document.getElementById('statusBanner');
-    banner.className = 'banner';
+    const remoteCountEl = document.getElementById("remote-count");
+    const localCountEl = document.getElementById("local-count");
 
-    if (level === 'ok') banner.classList.add('banner-ok');
-    else if (level === 'warn') banner.classList.add('banner-warn');
-    else banner.classList.add('banner-err');
+    const webDot = document.getElementById("web-status-dot");
+    const webText = document.getElementById("web-status-text");
+    const pfDot = document.getElementById("pf-status-dot");
+    const pfText = document.getElementById("pf-status-text");
+    const currentRemoteEl = document.getElementById("current-remote");
 
-    document.getElementById('bannerHeadline').textContent = headline || 'Sync status';
-    document.getElementById('bannerLabel').textContent = label || '';
-    document.getElementById('lastUpdated').textContent = 'Updated: ' + (updatedAt || '—');
-}
+    const lastRunEl = document.getElementById("last-run");
+    const lastRestartEl = document.getElementById("last-restart");
+    const lastDownloadEl = document.getElementById("last-download");
+    const logTailEl = document.getElementById("log-tail");
+    const chkDOutputEl = document.getElementById("chk-d-output");
 
-function applyServiceStatus(dotId, textId, level, label) {
-    const dot = document.getElementById(dotId);
-    const text = document.getElementById(textId);
+    const btnRefresh = document.getElementById("btn-refresh");
+    const btnRunD = document.getElementById("btn-run-d");
+    const btnRunDSpinner = document.getElementById("btn-run-d-spinner");
+    const btnRunDLabel = document.getElementById("btn-run-d-label");
+    const logToggle = document.getElementById("log-toggle");
 
-    dot.className = 'status-dot';
-    if (level === 'ok') {
-        dot.classList.add('dot-ok');
-    } else if (level === 'warn') {
-        dot.classList.add('dot-warn');
-    } else {
-        dot.classList.add('dot-err');
+    let logVisible = true;
+
+    logToggle.addEventListener("click", () => {
+        logVisible = !logVisible;
+        logTailEl.style.display = logVisible ? "block" : "none";
+        logToggle.textContent = logVisible ? "Hide log ▾" : "Show log ▸";
+    });
+
+    function setServiceDot(dotEl, textEl, status) {
+        const s = (status || "").toLowerCase();
+        const up = s === "active" || s === "running";
+        dotEl.classList.toggle("off", !up);
+        textEl.textContent = up ? "RUNNING" : (status || "UNKNOWN").toUpperCase();
     }
 
-    text.textContent = label || 'UNKNOWN';
-}
+    function setTrafficLights(severity) {
+        const sev = (severity || "UNKNOWN").toUpperCase();
+        trafficGreen.classList.add("off");
+        trafficAmber.classList.add("off");
+        trafficRed.classList.add("off");
 
-// Parse last restart from log_tail if backend doesn't provide last_restart
-function extractLastRestartFromLogTail(logTail) {
-    if (!logTail) return null;
-    const lines = logTail.split('\n').reverse(); // newest at top after reverse
-
-    for (const line of lines) {
-        // Example:
-        // 2025-11-29 00:31:35 pf_restart_svc.sh  - Service picframe.service restarted successfully
-        const m = line.match(/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\s+(\S+)\s+- Service picframe\.service restarted successfully/);
-        if (m) {
-            const ts = m[1];
-            // const src = m[2]; // ignore script name for display
-            return ts;  // just the timestamp
+        if (sev === "OK") {
+            trafficGreen.classList.remove("off");
+        } else if (sev === "WARN") {
+            trafficAmber.classList.remove("off");
+        } else if (sev === "ERROR") {
+            trafficRed.classList.remove("off");
+        } else {
+            trafficAmber.classList.remove("off");
         }
     }
-    return null;
-}
 
-// --- main status refresh ----------------------------------------
-function refreshStatus() {
-    fetch('/api/status')
-        .then(r => r.json())
-        .then(data => {
-            const level = data.level || 'err';
+    function setBannerForSeverity(severity) {
+        const sev = (severity || "UNKNOWN").toUpperCase();
+        if (sev === "OK") {
+            topBanner.style.background = "linear-gradient(90deg, #0b7a39, #059669)";
+            bannerPill.textContent = "OK";
+        } else if (sev === "WARN") {
+            topBanner.style.background = "linear-gradient(90deg, #92400e, #f97316)";
+            bannerPill.textContent = "WARN";
+        } else if (sev === "ERROR") {
+            topBanner.style.background = "linear-gradient(90deg, #b91c1c, #ef4444)";
+            bannerPill.textContent = "ERROR";
+        } else {
+            topBanner.style.background = "linear-gradient(90deg, #4b5563, #6b7280)";
+            bannerPill.textContent = "UNKNOWN";
+        }
+    }
 
-            document.getElementById('statusHeadline').textContent = data.status_headline || 'Status unknown';
-            document.getElementById('lastRun').textContent = data.last_sync || '—';
+    async function refreshStatus() {
+        btnRefresh.disabled = true;
+        try {
+            const resp = await fetch("/api/status");
+            const data = await resp.json();
 
-            // Last service restart: prefer backend field, fall back to parsing log_tail
-            const lastRestartEl = document.getElementById('lastRestart');
-            let restartText = data.last_restart || null;
-            if (!restartText) {
-                restartText = extractLastRestartFromLogTail(data.log_tail);
+            const nowStr = data.now || "";
+            bannerUpdated.textContent = nowStr ? "Updated: " + nowStr : "Updated: --";
+
+            const overall = data.overall || {};
+            const severity = overall.severity || "UNKNOWN";
+            const statusText = overall.status_text || "Status unknown";
+
+            overallTitle.textContent = statusText;
+            overallChip.textContent = severity;
+            overallChip.classList.remove("error", "warn");
+            if (severity.toUpperCase() === "ERROR") {
+                overallChip.classList.add("error");
+            } else if (severity.toUpperCase() === "WARN") {
+                overallChip.classList.add("warn");
             }
-            lastRestartEl.textContent = restartText || '—';
+            kStatusText.textContent = "status · " + severity.toLowerCase();
+            bannerText.textContent = statusText;
 
-            // Last file download: object {time, source} -> show only time
-            const lastFileEl = document.getElementById('lastFileDownload');
-            if (data.last_file_download && data.last_file_download.time) {
-                lastFileEl.textContent = data.last_file_download.time;
-            } else {
-                lastFileEl.textContent = '—';
-            }
+            setTrafficLights(severity);
+            setBannerForSeverity(severity);
 
-            document.getElementById('gCount').textContent = (data.google_count ?? '—');
-            document.getElementById('lCount').textContent = (data.local_count ?? '—');
-            document.getElementById('currentRemote').textContent = data.current_remote || '—';
+            const rc = overall.remote_count;
+            const lc = overall.local_count;
+            remoteCountEl.textContent = (rc !== null && rc !== undefined) ? rc : "—";
+            localCountEl.textContent = (lc !== null && lc !== undefined) ? lc : "—";
 
-            document.getElementById('statusLabelText').textContent = data.status_label || '—';
+            setServiceDot(webDot, webText, data.web_status);
+            setServiceDot(pfDot, pfText, data.pf_status);
 
-            const labelChip = document.getElementById('statusLabelChip');
-            labelChip.className = 'pill';
-            if (level === 'ok')      labelChip.style.borderColor = '#22c55e';
-            else if (level === 'warn') labelChip.style.borderColor = '#facc15';
-            else                      labelChip.style.borderColor = '#ef4444';
+            currentRemoteEl.textContent = data.current_remote || "--";
 
-            document.getElementById('logTail').textContent = data.log_tail || '(log is empty or missing)';
+            const act = data.activity || {};
+            // If you later add last_run in the backend, this will pick it up.
+            lastRunEl.textContent = act.last_run || nowStr || "—";
+            lastRestartEl.textContent = act.last_service_restart || "—";
+            lastDownloadEl.textContent = act.last_file_download || "—";
+            logTailEl.textContent = (act.log_tail || "").trim() || "(no log data)";
+        } catch (err) {
+            console.error("Failed to refresh status", err);
+            bannerText.textContent = "Error fetching status";
+            setBannerForSeverity("ERROR");
+            overallTitle.textContent = "Status unknown";
+            overallChip.textContent = "ERROR";
+        } finally {
+            btnRefresh.disabled = false;
+        }
+    }
 
-            applyStatusLights(level);
-            applyStatusChip(level, data.status_label || '');
-            applyBanner(level, data.status_headline, data.status_label, data.generated_at);
+    async function runChkSyncD() {
+        btnRunD.disabled = true;
+        btnRunDSpinner.style.display = "inline-block";
+        btnRunDLabel.textContent = "Running…";
+        try {
+            const resp = await fetch("/api/run-chk-syncd", { method: "POST" });
+            const data = await resp.json();
+            chkDOutputEl.textContent = (data.output || "").trim() || "(no output)";
+        } catch (err) {
+            console.error("Failed to run chk_sync.sh --d", err);
+            chkDOutputEl.textContent = "Error running chk_sync.sh --d: " + err;
+        } finally {
+            btnRunD.disabled = false;
+            btnRunDSpinner.style.display = "none";
+            btnRunDLabel.textContent = "Run chk_sync.sh --d";
+        }
+    }
 
-            const webLevel = data.web_status_level || 'warn';
-            const webLabel = data.web_status_label || 'UNKNOWN';
-            applyServiceStatus('webSvcDot', 'webSvcText', webLevel, webLabel);
+    document.getElementById("btn-refresh").addEventListener("click", refreshStatus);
+    document.getElementById("btn-run-d").addEventListener("click", runChkSyncD);
 
-            const pfLevel = data.pf_status_level || 'warn';
-            const pfLabel = data.pf_status_label || 'UNKNOWN';
-            applyServiceStatus('pfSvcDot', 'pfSvcText', pfLevel, pfLabel);
-        })
-        .catch(err => {
-            document.getElementById('logTail').textContent = 'Error loading status: ' + err;
-            applyStatusLights('err');
-            applyStatusChip('err', 'ERROR');
-            applyBanner('err', 'Error loading status', 'ERROR', '');
-            applyServiceStatus('webSvcDot', 'webSvcText', 'warn', 'UNKNOWN');
-            applyServiceStatus('pfSvcDot', 'pfSvcText', 'warn', 'UNKNOWN');
-        });
-}
-
-// --- run chk_sync.sh --d ----------------------------------------
-function runCheck() {
-    const btn = document.getElementById('btnRunCheck');
-    btn.disabled = true;
-    btn.textContent = 'Running chk_sync.sh --d…';
-
-    fetch('/api/run-check', { method: 'POST' })
-        .then(r => r.json())
-        .then(data => {
-            const out = [];
-            out.push('# chk_sync.sh --d run');
-            out.push('Exit code: ' + data.exit_code);
-
-            if (data.stdout) {
-                out.push('');
-                out.push('[stdout]');
-                out.push(data.stdout);
-            }
-            if (data.stderr) {
-                out.push('');
-                out.push('[stderr]');
-                out.push(data.stderr);
-            }
-
-            document.getElementById('checkOutput').textContent = out.join('\n');
-            refreshStatus();
-        })
-        .catch(err => {
-            document.getElementById('checkOutput').textContent = 'Error running chk_sync: ' + err;
-        })
-        .finally(() => {
-            btn.disabled = false;
-            btn.textContent = '▶ Run chk_sync.sh --d';
-        });
-}
-
-// --- log show/hide ----------------------------------------------
-function setupLogToggle() {
-    const toggle = document.getElementById('logToggle');
-    const section = document.getElementById('logSection');
-    let open = false;
-
-    toggle.addEventListener('click', () => {
-        open = !open;
-        section.style.display = open ? 'block' : 'none';
-        toggle.textContent = open ? 'Hide log ▲' : 'Show log ▼';
-    });
-}
-
-// --- init -------------------------------------------------------
-document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('btnRefresh').addEventListener('click', refreshStatus);
-    document.getElementById('btnRunCheck').addEventListener('click', runCheck);
-    setupLogToggle();
+    // initial load + auto-refresh
     refreshStatus();
     setInterval(refreshStatus, 15000);
-});
 </script>
 </body>
 </html>
