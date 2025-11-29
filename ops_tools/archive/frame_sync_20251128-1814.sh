@@ -22,13 +22,8 @@ fi
 # -------------------------------------------------------------------
 # CONFIGURATION
 # -------------------------------------------------------------------
-# Example: replace the existing REMOTE/LDIR lines with these:
-
-RCLONE_REMOTE="kfrphotos:KFR_kframe"
-LDIR="$HOME/Pictures/kfr_frame"
-
-#RCLONE_REMOTE="kfgdrive:dframe"          # rclone remote:path
-#LDIR="$HOME/Pictures/gdt_frame"          # local directory for frame photos
+RCLONE_REMOTE="kfgdrive:dframe"          # rclone remote:path
+LDIR="$HOME/Pictures/gdt_frame"          # local directory for frame photos
 
 LOG_DIR="$HOME/logs"
 LOG_FILE="$LOG_DIR/frame_sync.log"
@@ -40,7 +35,7 @@ SAFE_MODE_FILE="$HOME/picframe_3.0/ops_tools/safe_mode.flag"
 PICFRAME_SERVICE="picframe.service"
 
 # Minimum expected file count to consider the remote "valid"
-MIN_FILES=1
+MIN_FILES=10
 
 # Default sync mode: QUICK (count comparison). Use --d for DETAILED (rclone check).
 SYNC_MODE="QUICK"
