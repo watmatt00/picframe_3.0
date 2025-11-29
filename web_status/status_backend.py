@@ -185,15 +185,43 @@ def parse_log(path: Path):
 # ---------------------------------------------------------------------------
 
 def _systemctl_status(service: str, user: bool = False) -> str:
-    cmd = ["systemctl"]
-    if user:
-        cmd.append("--user")
-    cmd.extend(["is-active", service])
+    """
+    Improved user service detection.
+    Works even when called from a system service (pf-web-status).
 
+    For user services (picframe.service):
+        systemctl --user --machine=pi@ is-active picframe.service
+
+    For system services (pf-web-status.service):
+        systemctl is-active pf-web-status.service
+    """
     env = os.environ.copy()
-    env.setdefault("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
+    env.setdefault("PATH",
+        "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
 
     try:
+        if user:
+            # Ensure linger is enabled so user services run outside login sessions
+            subprocess.run(
+                ["loginctl", "enable-linger", "pi"],
+                text=True,
+                capture_output=True,
+                timeout=5,
+                check=False,
+            )
+
+            # Query picframe.service as the pi user
+            cmd = [
+                "systemctl",
+                "--user",
+                "--machine=pi@",
+                "is-active",
+                service
+            ]
+        else:
+            # Normal system-level service
+            cmd = ["systemctl", "is-active", service]
+
         out = subprocess.run(
             cmd,
             text=True,
@@ -202,15 +230,20 @@ def _systemctl_status(service: str, user: bool = False) -> str:
             timeout=10,
             env=env,
         )
+
         status = out.stdout.strip() or out.stderr.strip()
         if not status:
             status = "unknown"
-        # Hide noisy "Failed to connect to bus" errors and treat as unknown
-        if "failed to connect to bus" in status.lower():
+
+        # Normalize bad output
+        if "failed to connect" in status.lower():
             status = "unknown"
+
         return status
+
     except Exception:
         return "unknown"
+
 
 
 def _current_remote_from_conf(conf_path: Path) -> str:
