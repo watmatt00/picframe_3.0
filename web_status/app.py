@@ -14,10 +14,11 @@ app = Flask(__name__)
 
 @app.route("/")
 def dashboard():
-    hostname = socket.gethostname()
+    """Render the main dashboard page."""
+    host_name = socket.gethostname().upper()
     return render_template(
         "dashboard.html",
-        hostname=hostname,
+        host_name=host_name,
         script_path=str(CHK_SCRIPT),
         log_path=str(LOG_PATH),
     )
@@ -25,7 +26,7 @@ def dashboard():
 
 @app.route("/api/status")
 def api_status():
-    """Return overall sync + service status as JSON for the dashboard."""
+    """Return current status JSON for the dashboard."""
     status = get_status_payload()
     return jsonify(status)
 
@@ -33,6 +34,13 @@ def api_status():
 @app.route("/api/run-check", methods=["POST"])
 def api_run_check():
     """Trigger chk_sync.sh --d and return its output as JSON."""
+    result = run_chk_sync_detailed()
+    return jsonify(result)
+
+
+# Alias used by earlier JS versions, so both URLs work
+@app.route("/api/run-chk-syncd", methods=["POST"])
+def api_run_chk_syncd():
     result = run_chk_sync_detailed()
     return jsonify(result)
 

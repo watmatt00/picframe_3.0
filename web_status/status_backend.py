@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Simpler, defensive backend for the PicFrame Sync Dashboard.
+Robust backend for the PicFrame Sync Dashboard.
 
-Key goals:
-  - Always derive remote/local counts + severity from a live chk_sync.sh quick run
-  - Keep JSON shape stable for the existing dashboard.js
-  - Be very tolerant of output formatting (leading spaces, emojis, colours, etc.)
+Goals:
+  - Always return valid JSON from get_status_payload() (no 500s).
+  - Drive counts/severity from a live chk_sync.sh quick run when possible.
+  - Fall back gracefully and expose enough debug info to see what went wrong.
 """
 
 import os
@@ -25,7 +25,7 @@ PF_SERVICE_NAME = "picframe.service"         # user service (systemctl --user)
 
 
 # ---------------------------------------------------------------------------
-# Helpers for chk_sync.sh quick mode
+# Quick check helper
 # ---------------------------------------------------------------------------
 
 def run_quick_check():
@@ -36,15 +36,22 @@ def run_quick_check():
       Local  file count: M
       Quick check: File counts match. / Counts differ. / etc.
 
-    Returns a dict with:
-      remote_count, local_count, quick_status, raw_output
+    Returns a dict:
+      {
+        "remote_count": int|None,
+        "local_count": int|None,
+        "quick_status": "match"|"differ"|"error"|"unknown",
+        "raw_output": [lines...],
+        "error": optional error string
+      }
     """
     remote_count = None
     local_count = None
     quick_status = "unknown"
+    raw_lines = []
+    error_msg = None
 
     env = os.environ.copy()
-    # Ensure a reasonable PATH for systemd service context
     env.setdefault("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
 
     try:
@@ -61,11 +68,10 @@ def run_quick_check():
             "remote_count": None,
             "local_count": None,
             "quick_status": "error",
-            "error": "Failed to run chk_sync.sh: %s" % e,
             "raw_output": [],
+            "error": f"Failed to run chk_sync.sh: {e}",
         }
 
-    # Combine stdout + stderr (non-TTY runs may print to stderr)
     combined = ""
     if result.stdout:
         combined += result.stdout
@@ -74,15 +80,14 @@ def run_quick_check():
             combined += "\n"
         combined += result.stderr
 
-    lines = combined.splitlines()
+    raw_lines = combined.splitlines()
 
-    for line in lines:
+    for line in raw_lines:
         stripped = line.strip()
         lower = stripped.lower()
 
-        # --- counts ---
+        # Count lines (case-insensitive, tolerant of extra text)
         if "remote file count" in lower:
-            # tolerate extra text, emojis, etc.
             try:
                 after = stripped.split(":", 1)[1].strip()
                 remote_count = int(after.split()[0])
@@ -96,7 +101,7 @@ def run_quick_check():
             except Exception:
                 pass
 
-        # --- quick status line ---
+        # Quick check line
         if "quick check" in lower:
             if "match" in lower:
                 quick_status = "match"
@@ -105,31 +110,30 @@ def run_quick_check():
             elif "error" in lower or "failed" in lower:
                 quick_status = "error"
 
-    # If chk_sync.sh failed and we got no counts, it's an error
-    if result.returncode != 0 and (remote_count is None or local_count is None):
-        quick_status = "error"
+    # Script failed and we got nothing useful -> error
+    if result.returncode != 0 and (remote_count is None and local_count is None):
+        if quick_status == "unknown":
+            quick_status = "error"
+        error_msg = f"chk_sync.sh exited {result.returncode}"
 
-    # If we have counts but no explicit quick_status, infer it from the counts
+    # If we have counts but no status, infer from counts
     if quick_status == "unknown" and remote_count is not None and local_count is not None:
-        if remote_count == local_count:
-            quick_status = "match"
-        else:
-            quick_status = "differ"
+        quick_status = "match" if remote_count == local_count else "differ"
 
     return {
         "remote_count": remote_count,
         "local_count": local_count,
         "quick_status": quick_status,
-        "raw_output": lines,
+        "raw_output": raw_lines,
+        "error": error_msg,
     }
 
 
 # ---------------------------------------------------------------------------
-# Log parsing helpers
+# Log helpers
 # ---------------------------------------------------------------------------
 
-def _tail_lines(path, max_lines=60):
-    """Return the last `max_lines` lines of a text file, joined by newlines."""
+def _tail_lines(path: Path, max_lines: int = 60) -> str:
     if not path.exists():
         return ""
     dq = deque(maxlen=max_lines)
@@ -139,11 +143,7 @@ def _tail_lines(path, max_lines=60):
     return "\n".join(dq)
 
 
-def _last_matching_timestamp(path, needle):
-    """
-    Scan the log for the last line containing `needle` and return the leading
-    YYYY-MM-DD HH:MM:SS timestamp (if present).
-    """
+def _last_matching_timestamp(path: Path, needle: str):
     if not path.exists():
         return None
 
@@ -156,7 +156,7 @@ def _last_matching_timestamp(path, needle):
     if not last_line:
         return None
 
-    ts_str = last_line[:19]  # "2025-11-29 08:00:05"
+    ts_str = last_line[:19]
     try:
         datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S")
         return ts_str
@@ -164,14 +164,7 @@ def _last_matching_timestamp(path, needle):
         return None
 
 
-def parse_log(path):
-    """
-    Pull structured info out of frame_sync.log:
-
-      - last_service_restart: last time picframe.service restarted successfully
-      - last_file_download:  last time rclone sync completed successfully
-      - log_tail:            last N lines of the log for display
-    """
+def parse_log(path: Path):
     last_restart = _last_matching_timestamp(
         path, "Service picframe.service restarted successfully"
     )
@@ -188,13 +181,10 @@ def parse_log(path):
 
 
 # ---------------------------------------------------------------------------
-# Service + current-remote detection
+# Service + current-remote helpers
 # ---------------------------------------------------------------------------
 
-def _systemctl_status(service, user=False):
-    """
-    Wrap `systemctl is-active` (optionally with --user) and return a short status.
-    """
+def _systemctl_status(service: str, user: bool = False) -> str:
     cmd = ["systemctl"]
     if user:
         cmd.append("--user")
@@ -218,16 +208,7 @@ def _systemctl_status(service, user=False):
         return "unknown"
 
 
-def _current_remote_from_conf(conf_path):
-    """
-    Read config/frame_sources.conf and return the human label for ACTIVE_SOURCE.
-
-    Expects entries like:
-
-        ACTIVE_SOURCE="kfr"
-        SOURCE_kfr_LABEL="Koofr (kfr_frame)"
-        SOURCE_gdt_LABEL="Google Drive (gdt_frame)"
-    """
+def _current_remote_from_conf(conf_path: Path) -> str:
     if not conf_path.exists():
         return "--"
 
@@ -240,9 +221,7 @@ def _current_remote_from_conf(conf_path):
                 line = raw.strip()
                 if not line or line.startswith("#"):
                     continue
-
                 if line.startswith("ACTIVE_SOURCE"):
-                    # ACTIVE_SOURCE="kfr"
                     _, val = line.split("=", 1)
                     active_source = val.strip().strip('"').strip("'")
                 elif line.startswith("SOURCE_") and "_LABEL" in line:
@@ -254,84 +233,102 @@ def _current_remote_from_conf(conf_path):
     if not active_source:
         return "--"
 
-    label_key = "SOURCE_%s_LABEL" % active_source
+    label_key = f"SOURCE_{active_source}_LABEL"
     return labels.get(label_key, active_source)
 
 
 # ---------------------------------------------------------------------------
-# Primary payload builder for /api/status
+# Public API used by app.py
 # ---------------------------------------------------------------------------
 
 def get_status_payload():
     """
     Build the JSON payload returned by /api/status.
 
-    This is what the dashboard JavaScript consumes. Key points:
-
-      * Remote/local counts and overall severity are derived from a live
-        quick run of chk_sync.sh (NOT from the log).
-      * The log is used for last service restart, last file download, and the
-        log tail preview.
+    Never raises; on any error, returns a best-effort payload with
+    severity="ERROR" and a debug.error field.
     """
-    # 1. Live quick check
-    quick = run_quick_check()
-    remote_count = quick.get("remote_count")
-    local_count = quick.get("local_count")
-    quick_status = quick.get("quick_status")
+    debug = {}
 
-    if quick_status == "match":
-        severity = "OK"
-        overall_text = "Last sync succeeded"
-    elif quick_status == "differ":
-        severity = "WARN"
-        overall_text = "Counts differ – check needed"
-    elif quick_status == "error":
-        severity = "ERROR"
-        overall_text = "Error running chk_sync.sh"
-    else:
-        severity = "UNKNOWN"
-        overall_text = "Status unknown"
+    try:
+        quick = run_quick_check()
+        debug["quick_error"] = quick.get("error")
+        debug["quick_raw_output"] = quick.get("raw_output")
 
-    # 2. Log-derived information
-    log_info = parse_log(LOG_PATH)
+        remote_count = quick.get("remote_count")
+        local_count = quick.get("local_count")
+        quick_status = quick.get("quick_status") or "unknown"
 
-    # 3. Service states + current remote
-    web_status = _systemctl_status(WEB_SERVICE_NAME, user=False)
-    pf_status = _systemctl_status(PF_SERVICE_NAME, user=True)
-    current_remote = _current_remote_from_conf(FRAME_SOURCES_CONF)
+        if quick_status == "match":
+            severity = "OK"
+            overall_text = "Last sync succeeded"
+        elif quick_status == "differ":
+            severity = "WARN"
+            overall_text = "Counts differ – check needed"
+        elif quick_status == "error":
+            severity = "ERROR"
+            overall_text = "Error running chk_sync.sh"
+        else:
+            severity = "UNKNOWN"
+            overall_text = "Status unknown"
 
-    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_info = parse_log(LOG_PATH)
+        web_status = _systemctl_status(WEB_SERVICE_NAME, user=False)
+        pf_status = _systemctl_status(PF_SERVICE_NAME, user=True)
+        current_remote = _current_remote_from_conf(FRAME_SOURCES_CONF)
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    return {
-        "now": now_str,
-        "script_path": str(CHK_SCRIPT),
-        "log_path": str(LOG_PATH),
-        "overall": {
-            "remote_count": remote_count,
-            "local_count": local_count,
-            "severity": severity,
-            "status_text": overall_text,
-        },
-        "web_status": web_status,
-        "pf_status": pf_status,
-        "current_remote": current_remote,
-        "activity": {
-            "last_service_restart": log_info["last_service_restart"],
-            "last_file_download": log_info["last_file_download"],
-            "log_tail": log_info["log_tail"],
-        },
-    }
+        return {
+            "now": now_str,
+            "script_path": str(CHK_SCRIPT),
+            "log_path": str(LOG_PATH),
+            "overall": {
+                "remote_count": remote_count,
+                "local_count": local_count,
+                "severity": severity,
+                "status_text": overall_text,
+            },
+            "web_status": web_status,
+            "pf_status": pf_status,
+            "current_remote": current_remote,
+            "activity": {
+                "last_service_restart": log_info["last_service_restart"],
+                "last_file_download": log_info["last_file_download"],
+                "log_tail": log_info["log_tail"],
+            },
+            "debug": debug,
+        }
 
+    except Exception as e:
+        # Absolutely last-resort fallback so /api/status still returns JSON
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        debug["top_level_error"] = str(e)
 
-# ---------------------------------------------------------------------------
-# Detailed chk_sync.sh --d runner for the "Run chk_sync.sh --d" button
-# ---------------------------------------------------------------------------
+        return {
+            "now": now_str,
+            "script_path": str(CHK_SCRIPT),
+            "log_path": str(LOG_PATH),
+            "overall": {
+                "remote_count": None,
+                "local_count": None,
+                "severity": "ERROR",
+                "status_text": "Backend error",
+            },
+            "web_status": "unknown",
+            "pf_status": "unknown",
+            "current_remote": "--",
+            "activity": {
+                "last_service_restart": "--",
+                "last_file_download": "--",
+                "log_tail": "",
+            },
+            "debug": debug,
+        }
+
 
 def run_chk_sync_detailed():
     """
-    Run chk_sync.sh --d and return its stdout/stderr.
-
-    Used by /api/run-check (POST).
+    Run chk_sync.sh --d and return its stdout/stderr for the tools card.
     """
     env = os.environ.copy()
     env.setdefault("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
@@ -360,5 +357,5 @@ def run_chk_sync_detailed():
     except Exception as e:
         return {
             "ok": False,
-            "output": "Error running chk_sync.sh --d: %s" % e,
+            "output": f"Error running chk_sync.sh --d: {e}",
         }
