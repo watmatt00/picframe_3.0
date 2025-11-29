@@ -118,7 +118,7 @@ DASHBOARD_HTML = """
             margin-top: 0.75rem;
         }
         .tools-card {
-            margin-top: 1.2rem;
+            margin-top: 0rem;
         }
         .card-title {
             font-size: 0.9rem;
