@@ -1,24 +1,20 @@
 #!/usr/bin/env python3
 """
-Backend helpers for the PicFrame Sync Dashboard.
+Simpler, defensive backend for the PicFrame Sync Dashboard.
 
-This module is responsible for:
-  - Running chk_sync.sh in quick mode for live counts / overall status
-  - Reading frame_sync.log for last restart / last file download / log tail
-  - Reporting service status and current remote
-  - Running chk_sync.sh --d on demand for the "Run chk_sync.sh --d" button
+Key goals:
+  - Always derive remote/local counts + severity from a live chk_sync.sh quick run
+  - Keep JSON shape stable for the existing dashboard.js
+  - Be very tolerant of output formatting (leading spaces, emojis, colours, etc.)
 """
-
-from __future__ import annotations
 
 import os
 import subprocess
 from collections import deque
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List, Optional
 
-# --- Paths / service names used across the dashboard -------------------------
+# --- Paths / service names ---------------------------------------------------
 
 LOG_PATH = Path("/home/pi/logs/frame_sync.log")
 CHK_SCRIPT = Path("/home/pi/picframe_3.0/ops_tools/chk_sync.sh")
@@ -32,7 +28,7 @@ PF_SERVICE_NAME = "picframe.service"         # user service (systemctl --user)
 # Helpers for chk_sync.sh quick mode
 # ---------------------------------------------------------------------------
 
-def run_quick_check() -> Dict[str, Any]:
+def run_quick_check():
     """
     Run chk_sync.sh in quick (default) mode and parse:
 
@@ -40,18 +36,15 @@ def run_quick_check() -> Dict[str, Any]:
       Local  file count: M
       Quick check: File counts match. / Counts differ. / etc.
 
-    Returns a dict containing:
-      remote_count: int|None
-      local_count: int|None
-      quick_status: "match" | "differ" | "error" | "unknown"
-      raw_output: List[str]
+    Returns a dict with:
+      remote_count, local_count, quick_status, raw_output
     """
-    remote_count: Optional[int] = None
-    local_count: Optional[int] = None
-    quick_status: str = "unknown"
+    remote_count = None
+    local_count = None
+    quick_status = "unknown"
 
-    # Make sure PATH is sane when running under systemd
     env = os.environ.copy()
+    # Ensure a reasonable PATH for systemd service context
     env.setdefault("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
 
     try:
@@ -68,11 +61,10 @@ def run_quick_check() -> Dict[str, Any]:
             "remote_count": None,
             "local_count": None,
             "quick_status": "error",
-            "error": f"Failed to run chk_sync.sh: {e}",
+            "error": "Failed to run chk_sync.sh: %s" % e,
             "raw_output": [],
         }
 
-    # Combine stdout + stderr, since non-TTY runs may print to stderr
     combined = ""
     if result.stdout:
         combined += result.stdout
@@ -81,33 +73,36 @@ def run_quick_check() -> Dict[str, Any]:
             combined += "\n"
         combined += result.stderr
 
-    lines: List[str] = combined.splitlines()
+    lines = combined.splitlines()
 
     for line in lines:
-        if line.startswith("Remote file count:"):
-            # "Remote file count: 2737"
+        stripped = line.strip()
+        lower = stripped.lower()
+
+        if "remote file count:" in stripped:
+            # tolerate stuff before the text (colours, emoji, etc.)
             try:
-                remote_count = int(line.split(":", 1)[1].strip())
-            except ValueError:
+                after = stripped.split(":", 1)[1].strip()
+                remote_count = int(after.split()[0])
+            except Exception:
                 pass
-        elif line.startswith("Local  file count:"):
-            # Note the double space after "Local" in the script output
+
+        elif "local  file count:" in stripped:
             try:
-                local_count = int(line.split(":", 1)[1].strip())
-            except ValueError:
+                after = stripped.split(":", 1)[1].strip()
+                local_count = int(after.split()[0])
+            except Exception:
                 pass
-        elif "Quick check:" in line:
-            lower = line.lower()
+
+        if "quick check:" in lower:
             if "match" in lower:
                 quick_status = "match"
             elif "differ" in lower:
                 quick_status = "differ"
             elif "error" in lower or "failed" in lower:
                 quick_status = "error"
-            else:
-                quick_status = "unknown"
 
-    # If script failed and we got no counts, it's an error
+    # If chk_sync.sh failed and we got no counts, it's an error
     if result.returncode != 0 and (remote_count is None or local_count is None):
         quick_status = "error"
 
@@ -130,18 +125,18 @@ def run_quick_check() -> Dict[str, Any]:
 # Log parsing helpers
 # ---------------------------------------------------------------------------
 
-def _tail_lines(path: Path, max_lines: int = 60) -> str:
+def _tail_lines(path, max_lines=60):
     """Return the last `max_lines` lines of a text file, joined by newlines."""
     if not path.exists():
         return ""
-    dq: deque[str] = deque(maxlen=max_lines)
+    dq = deque(maxlen=max_lines)
     with path.open("r", encoding="utf-8", errors="ignore") as f:
         for line in f:
             dq.append(line.rstrip("\n"))
     return "\n".join(dq)
 
 
-def _last_matching_timestamp(path: Path, needle: str) -> Optional[str]:
+def _last_matching_timestamp(path, needle):
     """
     Scan the log for the last line containing `needle` and return the leading
     YYYY-MM-DD HH:MM:SS timestamp (if present).
@@ -149,7 +144,7 @@ def _last_matching_timestamp(path: Path, needle: str) -> Optional[str]:
     if not path.exists():
         return None
 
-    last_line: Optional[str] = None
+    last_line = None
     with path.open("r", encoding="utf-8", errors="ignore") as f:
         for line in f:
             if needle in line:
@@ -166,7 +161,7 @@ def _last_matching_timestamp(path: Path, needle: str) -> Optional[str]:
         return None
 
 
-def parse_log(path: Path) -> Dict[str, Any]:
+def parse_log(path):
     """
     Pull structured info out of frame_sync.log:
 
@@ -193,7 +188,7 @@ def parse_log(path: Path) -> Dict[str, Any]:
 # Service + current-remote detection
 # ---------------------------------------------------------------------------
 
-def _systemctl_status(service: str, user: bool = False) -> str:
+def _systemctl_status(service, user=False):
     """
     Wrap `systemctl is-active` (optionally with --user) and return a short status.
     """
@@ -220,7 +215,7 @@ def _systemctl_status(service: str, user: bool = False) -> str:
         return "unknown"
 
 
-def _current_remote_from_conf(conf_path: Path) -> str:
+def _current_remote_from_conf(conf_path):
     """
     Read config/frame_sources.conf and return the human label for ACTIVE_SOURCE.
 
@@ -233,8 +228,8 @@ def _current_remote_from_conf(conf_path: Path) -> str:
     if not conf_path.exists():
         return "--"
 
-    active_source: Optional[str] = None
-    labels: Dict[str, str] = {}
+    active_source = None
+    labels = {}
 
     try:
         with conf_path.open("r", encoding="utf-8", errors="ignore") as f:
@@ -256,7 +251,7 @@ def _current_remote_from_conf(conf_path: Path) -> str:
     if not active_source:
         return "--"
 
-    label_key = f"SOURCE_{active_source}_LABEL"
+    label_key = "SOURCE_%s_LABEL" % active_source
     return labels.get(label_key, active_source)
 
 
@@ -264,7 +259,7 @@ def _current_remote_from_conf(conf_path: Path) -> str:
 # Primary payload builder for /api/status
 # ---------------------------------------------------------------------------
 
-def get_status_payload() -> Dict[str, Any]:
+def get_status_payload():
     """
     Build the JSON payload returned by /api/status.
 
@@ -275,7 +270,7 @@ def get_status_payload() -> Dict[str, Any]:
       * The log is used for last service restart, last file download, and the
         log tail preview.
     """
-    # 1. Run chk_sync.sh quick mode for live counts
+    # 1. Live quick check
     quick = run_quick_check()
     remote_count = quick.get("remote_count")
     local_count = quick.get("local_count")
@@ -329,7 +324,7 @@ def get_status_payload() -> Dict[str, Any]:
 # Detailed chk_sync.sh --d runner for the "Run chk_sync.sh --d" button
 # ---------------------------------------------------------------------------
 
-def run_chk_sync_detailed() -> Dict[str, Any]:
+def run_chk_sync_detailed():
     """
     Run chk_sync.sh --d and return its stdout/stderr.
 
@@ -347,13 +342,20 @@ def run_chk_sync_detailed() -> Dict[str, Any]:
             timeout=600,
             env=env,
         )
-        output = (result.stdout or "") + (("\n" + result.stderr) if result.stderr else "")
+        output = ""
+        if result.stdout:
+            output += result.stdout
+        if result.stderr:
+            if output:
+                output += "\n"
+            output += result.stderr
+
         return {
-            "ok": result.returncode == 0,
+            "ok": (result.returncode == 0),
             "output": output,
         }
     except Exception as e:
         return {
             "ok": False,
-            "output": f"Error running chk_sync.sh --d: {e}",
+            "output": "Error running chk_sync.sh --d: %s" % e,
         }
