@@ -98,8 +98,9 @@ DASHBOARD_HTML = """
         }
         .grid {
             display: grid;
-            grid-template-columns: minmax(0, 2.7fr) minmax(0, 3fr);
+            grid-template-columns: minmax(0, 3.2fr) minmax(0, 2.5fr);
             gap: 1.25rem;
+            align-items: start;    /* NEW: keep cards aligned at the top */
         }
         @media (max-width: 900px) {
             .grid {
