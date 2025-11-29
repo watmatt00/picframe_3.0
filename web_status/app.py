@@ -116,6 +116,9 @@ DASHBOARD_HTML = """
         .grid > .card:nth-child(2) {
             margin-top: 0.75rem;
         }
+        .tools-card {
+            margin-top: 1.2rem;
+        }
         .card-title {
             font-size: 0.9rem;
             font-weight: 600;
@@ -408,7 +411,7 @@ DASHBOARD_HTML = """
         </div>
 
         <!-- RIGHT: tools -->
-        <div class="card">
+        <div class="card tools-card">
             <div class="card-title">
                 Activity & tools
                 <span>Uses log; chk_sync on demand</span>
