@@ -195,7 +195,7 @@
         }
         .svc-lines {
             margin-top: 0.9rem;
-            margin-left: -4.0rem;   /* pull WEB/PICFRAME/CURRENT REMOTE left */
+            margin-left: -4.0rem;
             display: flex;
             flex-direction: column;
             gap: 0.3rem;
@@ -439,6 +439,7 @@
 </div>
 
 <script>
+// --- helpers ----------------------------------------------------
 function applyStatusLights(level) {
     const red   = document.getElementById('lightRed');
     const yellow= document.getElementById('lightYellow');
@@ -495,6 +496,25 @@ function applyServiceStatus(dotId, textId, level, label) {
     text.textContent = label || 'UNKNOWN';
 }
 
+// Parse last restart from log_tail if backend doesn't provide last_restart
+function extractLastRestartFromLogTail(logTail) {
+    if (!logTail) return null;
+    const lines = logTail.split('\n').reverse(); // newest at top after reverse
+
+    for (const line of lines) {
+        // Example:
+        // 2025-11-29 00:31:35 pf_restart_svc.sh  - Service picframe.service restarted successfully
+        const m = line.match(/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\s+(\S+)\s+- Service picframe\.service restarted successfully/);
+        if (m) {
+            const ts = m[1];
+            const src = m[2];
+            return ts + ' (' + src + ')';
+        }
+    }
+    return null;
+}
+
+// --- main status refresh ----------------------------------------
 function refreshStatus() {
     fetch('/api/status')
         .then(r => r.json())
@@ -504,15 +524,15 @@ function refreshStatus() {
             document.getElementById('statusHeadline').textContent = data.status_headline || 'Status unknown';
             document.getElementById('lastRun').textContent = data.last_sync || '—';
 
-            // Tools card: Last service restart from log
+            // Last service restart: prefer backend field, fall back to parsing log_tail
             const lastRestartEl = document.getElementById('lastRestart');
-            if (data.last_restart) {
-                lastRestartEl.textContent = data.last_restart;
-            } else {
-                lastRestartEl.textContent = '—';
+            let restartText = data.last_restart || null;
+            if (!restartText) {
+                restartText = extractLastRestartFromLogTail(data.log_tail);
             }
+            lastRestartEl.textContent = restartText || '—';
 
-            // Tools card: Last file download (object with time/source)
+            // Last file download: object {time, source}
             const lastFileEl = document.getElementById('lastFileDownload');
             if (data.last_file_download && data.last_file_download.time) {
                 const ld = data.last_file_download;
@@ -558,12 +578,12 @@ function refreshStatus() {
         });
 }
 
+// --- run chk_sync.sh --d ----------------------------------------
 function runCheck() {
     const btn = document.getElementById('btnRunCheck');
     btn.disabled = true;
     btn.textContent = 'Running chk_sync.sh --d…';
 
-    // Use POST to match /api/run-check methods=["POST"]
     fetch('/api/run-check', { method: 'POST' })
         .then(r => r.json())
         .then(data => {
@@ -594,6 +614,7 @@ function runCheck() {
         });
 }
 
+// --- log show/hide ----------------------------------------------
 function setupLogToggle() {
     const toggle = document.getElementById('logToggle');
     const section = document.getElementById('logSection');
@@ -606,6 +627,7 @@ function setupLogToggle() {
     });
 }
 
+// --- init -------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btnRefresh').addEventListener('click', refreshStatus);
     document.getElementById('btnRunCheck').addEventListener('click', runCheck);
