@@ -77,7 +77,7 @@
             display: grid;
             grid-template-columns: minmax(0, 3.2fr) minmax(0, 2.5fr);
             gap: 1.25rem;
-            align-items: start;    /* NEW: keep cards aligned at the top */
+            align-items: start;
         }
         @media (max-width: 900px) {
             .grid {
@@ -211,7 +211,7 @@
             color: #9ca3af;
             text-transform: uppercase;
             letter-spacing: 0.08em;
-            min-width: 8rem; /*9.5rem;*/
+            min-width: 8rem;
         }
         .svc-indicator {
             display: inline-flex;
@@ -504,7 +504,17 @@ function refreshStatus() {
             document.getElementById('statusHeadline').textContent = data.status_headline || 'Status unknown';
             document.getElementById('lastRun').textContent = data.last_sync || '—';
             document.getElementById('lastRestart').textContent = data.last_restart || '—';
-            document.getElementById('lastFileDownload').textContent = data.last_file_download || '—';
+
+            // FIX: last_file_download is an object; format it
+            const lfdEl = document.getElementById('lastFileDownload');
+            if (data.last_file_download && data.last_file_download.time) {
+                const ld = data.last_file_download;
+                const src = ld.source || 'frame_sync.sh';
+                lfdEl.textContent = ld.time + ' (' + src + ')';
+            } else {
+                lfdEl.textContent = '—';
+            }
+
             document.getElementById('gCount').textContent = (data.google_count ?? '—');
             document.getElementById('lCount').textContent = (data.local_count ?? '—');
             document.getElementById('currentRemote').textContent = data.current_remote || '—';
@@ -546,7 +556,8 @@ function runCheck() {
     btn.disabled = true;
     btn.textContent = 'Running chk_sync.sh --d…';
 
-    fetch('/api/run-check')
+    // FIX: use POST to match /api/run-check methods=["POST"]
+    fetch('/api/run-check', { method: 'POST' })
         .then(r => r.json())
         .then(data => {
             const out = [];
@@ -564,7 +575,7 @@ function runCheck() {
                 out.push(data.stderr);
             }
 
-            document.getElementById('checkOutput').textContent = out.join('\\n');
+            document.getElementById('checkOutput').textContent = out.join('\n');
             refreshStatus();
         })
         .catch(err => {
