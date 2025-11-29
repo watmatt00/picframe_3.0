@@ -11,6 +11,7 @@ This module is responsible for:
 
 from __future__ import annotations
 
+import os
 import subprocess
 from collections import deque
 from datetime import datetime
@@ -49,6 +50,10 @@ def run_quick_check() -> Dict[str, Any]:
     local_count: Optional[int] = None
     quick_status: str = "unknown"
 
+    # Make sure PATH is sane when running under systemd
+    env = os.environ.copy()
+    env.setdefault("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
+
     try:
         result = subprocess.run(
             [str(CHK_SCRIPT)],
@@ -56,6 +61,7 @@ def run_quick_check() -> Dict[str, Any]:
             capture_output=True,
             check=False,
             timeout=120,
+            env=env,
         )
     except Exception as e:
         return {
@@ -66,7 +72,16 @@ def run_quick_check() -> Dict[str, Any]:
             "raw_output": [],
         }
 
-    lines: List[str] = result.stdout.splitlines()
+    # Combine stdout + stderr, since non-TTY runs may print to stderr
+    combined = ""
+    if result.stdout:
+        combined += result.stdout
+    if result.stderr:
+        if combined:
+            combined += "\n"
+        combined += result.stderr
+
+    lines: List[str] = combined.splitlines()
 
     for line in lines:
         if line.startswith("Remote file count:"):
@@ -76,7 +91,7 @@ def run_quick_check() -> Dict[str, Any]:
             except ValueError:
                 pass
         elif line.startswith("Local  file count:"):
-            # Note the double space after Local in the script output
+            # Note the double space after "Local" in the script output
             try:
                 local_count = int(line.split(":", 1)[1].strip())
             except ValueError:
@@ -92,9 +107,16 @@ def run_quick_check() -> Dict[str, Any]:
             else:
                 quick_status = "unknown"
 
-    # If chk_sync.sh failed and we didn't get usable counts, treat as error.
+    # If script failed and we got no counts, it's an error
     if result.returncode != 0 and (remote_count is None or local_count is None):
         quick_status = "error"
+
+    # If we have counts but no explicit quick_status, infer it from the counts
+    if quick_status == "unknown" and remote_count is not None and local_count is not None:
+        if remote_count == local_count:
+            quick_status = "match"
+        else:
+            quick_status = "differ"
 
     return {
         "remote_count": remote_count,
@@ -180,6 +202,9 @@ def _systemctl_status(service: str, user: bool = False) -> str:
         cmd.append("--user")
     cmd.extend(["is-active", service])
 
+    env = os.environ.copy()
+    env.setdefault("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
+
     try:
         out = subprocess.run(
             cmd,
@@ -187,6 +212,7 @@ def _systemctl_status(service: str, user: bool = False) -> str:
             capture_output=True,
             check=False,
             timeout=10,
+            env=env,
         )
         status = out.stdout.strip() or out.stderr.strip()
         return status or "unknown"
@@ -309,6 +335,9 @@ def run_chk_sync_detailed() -> Dict[str, Any]:
 
     Used by /api/run-check (POST).
     """
+    env = os.environ.copy()
+    env.setdefault("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
+
     try:
         result = subprocess.run(
             [str(CHK_SCRIPT), "--d"],
@@ -316,6 +345,7 @@ def run_chk_sync_detailed() -> Dict[str, Any]:
             capture_output=True,
             check=False,
             timeout=600,
+            env=env,
         )
         output = (result.stdout or "") + (("\n" + result.stderr) if result.stderr else "")
         return {
