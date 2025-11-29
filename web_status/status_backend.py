@@ -203,7 +203,12 @@ def _systemctl_status(service: str, user: bool = False) -> str:
             env=env,
         )
         status = out.stdout.strip() or out.stderr.strip()
-        return status or "unknown"
+        if not status:
+            status = "unknown"
+        # Hide noisy "Failed to connect to bus" errors and treat as unknown
+        if "failed to connect to bus" in status.lower():
+            status = "unknown"
+        return status
     except Exception:
         return "unknown"
 
@@ -235,6 +240,34 @@ def _current_remote_from_conf(conf_path: Path) -> str:
 
     label_key = f"SOURCE_{active_source}_LABEL"
     return labels.get(label_key, active_source)
+
+
+def _current_remote_from_quick(raw_lines) -> str:
+    """
+    Fallback: parse "Active source: kfr - Koofr (kfr_frame)"
+    from chk_sync.sh output if the config file doesn't give us a label.
+    """
+    if not raw_lines:
+        return "--"
+
+    for line in raw_lines:
+        stripped = line.strip()
+        lower = stripped.lower()
+        if lower.startswith("active source:"):
+            # after = "kfr - Koofr (kfr_frame)"
+            try:
+                after = stripped.split(":", 1)[1].strip()
+                # Prefer the human label part after the dash, if present
+                if " - " in after:
+                    parts = after.split(" - ", 1)
+                    label = parts[1].strip()
+                else:
+                    label = after
+                return label or "--"
+            except Exception:
+                continue
+
+    return "--"
 
 
 # ---------------------------------------------------------------------------
@@ -275,7 +308,13 @@ def get_status_payload():
         log_info = parse_log(LOG_PATH)
         web_status = _systemctl_status(WEB_SERVICE_NAME, user=False)
         pf_status = _systemctl_status(PF_SERVICE_NAME, user=True)
+
+        # Primary source: config file
         current_remote = _current_remote_from_conf(FRAME_SOURCES_CONF)
+        # Fallback: parse from chk_sync.sh output if config is missing/empty
+        if not current_remote or current_remote == "--":
+            current_remote = _current_remote_from_quick(quick.get("raw_output"))
+
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         return {
@@ -290,7 +329,7 @@ def get_status_payload():
             },
             "web_status": web_status,
             "pf_status": pf_status,
-            "current_remote": current_remote,
+            "current_remote": current_remote or "--",
             "activity": {
                 "last_service_restart": log_info["last_service_restart"],
                 "last_file_download": log_info["last_file_download"],
