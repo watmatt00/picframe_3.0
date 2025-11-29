@@ -1,7 +1,7 @@
 # 🖼️ PicFrame 3.0 — Raspberry Pi Digital Picture Frame
 
 PicFrame 3.0 is a DIY digital picture frame project built on a Raspberry Pi.
-It syncs photos from one or more cloud folders using **rclone**, displays them via
+It syncs photos from a Google Drive folder using **rclone**, displays them via
 the **PicFrame** viewer service, and includes tools for syncing, verification,
 promotion, and Git-based updates.
 
@@ -12,17 +12,14 @@ promotion, and Git-based updates.
 ```bash
 picframe_3.0/
 ├── app_control/
-│   ├── frame_sync_cron.sh      # Cron wrapper for scheduled frame_sync.sh runs
+│   ├── crontab                 # Template crontab (deployed by update_picframe.sh)
 │   ├── pf_start_svc.sh         # Start picframe service
 │   ├── pf_stop_svc.sh          # Stop picframe service
 │   ├── pf_restart_svc.sh       # Restart picframe service
+│   ├── frame_sync_cron.sh      # Cron wrapper for scheduled frame_sync.sh runs
 │   ├── pf_web_start_svc.sh     # Start web status dashboard (pf-web-status.service)
 │   ├── pf_web_stop_svc.sh      # Stop web status dashboard
 │   └── pf_web_restart_svc.sh   # Restart web status dashboard
-│
-├── config/
-│   ├── crontab                 # Template crontab (installed by update_app.sh)
-│   └── frame_sources.conf      # Source definitions for frame_live (gdt / kfr, etc.)
 │
 ├── web_status/
 │   └── app.py                  # Flask app for PicFrame web status dashboard (port 5050)
@@ -30,7 +27,7 @@ picframe_3.0/
 ├── ops_tools/
 │   ├── frame_sync.sh           # Main operational sync script (SAFE_MODE + auto-disable)
 │   ├── chk_status.sh           # Manual status verification tool
-│   ├── chk_sync.sh             # Manual sync verification / diff tool (source-aware)
+│   ├── chk_sync.sh             # Manual sync verification / diff tool
 │   ├── t_frame_sync.sh         # Test/Beta version of frame_sync.sh
 │   ├── t_chk_sync.sh           # Test/Beta version of chk_sync.sh
 │   ├── promote_to_prod.sh      # Promote t_* scripts into production
@@ -40,8 +37,8 @@ picframe_3.0/
 ```
 
 **Notes:**
-- `config/crontab` is a **template**, not the live system crontab.  
-  The `update_app.sh` script installs this template into the user's actual crontab.
+- `app_control/crontab` is a **template**, not the live system crontab.
+  The `update_picframe.sh` script installs this template into the user's actual crontab.
 - `frame_sync.sh` is the **production** sync script. New behavior is first
   developed and tested in `t_frame_sync.sh` and then promoted using
   `promote_to_prod.sh`.
@@ -58,10 +55,10 @@ picframe_3.0/
 | Start flask service | `bash ~/picframe_3.0/app_control/pf_web_start_svc.sh` |
 | Stop flask service | `bash ~/picframe_3.0/app_control/pf_web_stop_svc.sh` |
 | Restart flask service | `bash ~/picframe_3.0/app_control/pf_web_restart_svc.sh` |
-| Check sync status (source-aware) | `bash ~/picframe_3.0/ops_tools/chk_sync.sh` |
-| Check status summary | `bash ~/picframe_3.0/ops_tools/chk_status.sh` |
+| Check sync status | `bash ~/picframe_3.0/ops_tools/chk_sync.sh` |
+| Check status | `bash ~/picframe_3.0/ops_tools/chk_status.sh` |
 | Manual sync run | `bash ~/picframe_3.0/ops_tools/frame_sync.sh` |
-| Update repository & restart services | `bash ~/picframe_3.0/ops_tools/update_app.sh` |
+| Update repository & restart | `bash ~/picframe_3.0/ops_tools/update_app.sh` |
 | Promote test scripts to prod | `bash ~/picframe_3.0/ops_tools/promote_to_prod.sh` |
 
 ---
@@ -69,13 +66,13 @@ picframe_3.0/
 ## 🔄 frame_sync.sh — Main Sync Script (with SAFE_MODE)
 
 `frame_sync.sh` is responsible for keeping the local photo directory in sync
-with a cloud folder via rclone and restarting the PicFrame service when needed.
+with a Google Drive folder and restarting the PicFrame service when needed.
 
 High-level behavior:
 
 1. Compares file counts between:
-   - **Remote:** active cloud folder (e.g., Google Drive) via rclone
-   - **Local:** `$HOME/Pictures/gdt_frame` (or other source directory)
+   - **Remote:** `kfgdrive:dframe` (Google Drive via rclone)
+   - **Local:** `$HOME/Pictures/gdt_frame`
 2. If counts match:
    - No sync is performed.
 3. If counts differ:
@@ -124,8 +121,6 @@ tracks the last 3 `SYNC_RESULT:` entries for the current day.
 
 This makes SAFE_MODE both automatic and self-documenting in the log.
 
----
-
 ## 🧑‍💻 Manual Override of SAFE_MODE
 
 When you run `frame_sync.sh` manually in a terminal:
@@ -158,101 +153,20 @@ This allows SAFE_MODE to be bypassed intentionally only when you are present.
 
 ---
 
-## 🔍 chk_sync.sh — Source-Aware Sync Verification & Status Report
+## 🔍 chk_sync.sh — Manual Sync Verification & Status Report
 
-`chk_sync.sh` is the production sync verification tool. It now supports
-**dynamic source detection**, so it always checks the *currently active* photo
-source.
+`chk_sync.sh` is the production sync verification tool.  
+It now performs:
 
-### 1. Dynamic source detection
+### 1. Quick File Count Comparison
+- Remote: `kfgdrive:dframe`
+- Local:  `~/Pictures/gdt_frame`
 
-- Uses `/home/pi/Pictures/frame_live` (a symlink) and
-  `config/frame_sources.conf` to determine which source is active.
-- Example sources:
-  - `gdt` — Google Drive → `kfgdrive:dframe` → `/home/pi/Pictures/gdt_frame`
-  - `kfr` — Koofr → `kfrphotos:KFR_kframe` → `/home/pi/Pictures/kfr_frame`
-- The script prints the active source ID, label, remote, and local path at the
-  top of its output.
-
-### 2. Quick File Count Comparison (default mode)
-
-In default mode it performs a quick “count-only” comparison against the
-currently active source:
-
-- Remote: **active source’s rclone remote**
-- Local:  **active source’s local directory**
-
-Example output:
-
-```text
-Performing quick file count comparison...
-Remote file count: 2731
-Local  file count: 2731
-✅ Quick check: File counts match.
-```
-
-These two `Remote file count:` / `Local  file count:` lines are what the
-web dashboard uses for its REMOTE COUNT / LOCAL COUNT tiles.
-
-### 3. Detailed Check Mode (`--d`)
-
-If you run:
-
-```bash
-./chk_sync.sh --d
-```
-
-the script performs a full `rclone check` between the active remote and local
-directory, filtering out noisy “matching files” lines and summarizing any
-differences.
-
-### 4. Embedded Log Status Summary
-
-At the end of the default (quick) run, `chk_sync.sh` calls `chk_status.sh` to
-display a log-based summary:
-
+### 2. Embedded Log Status Summary
+Calls `chk_status.sh` to display:
 - Last successful sync
-- Last file download completion
-- Last PicFrame service restart
-
-This makes `chk_sync.sh` a one-stop “how are we doing?” tool.
-
----
-
-## 🌐 Web Status Dashboard — `web_status/app.py`
-
-The Flask web app in `web_status/app.py` serves a dashboard on port **5050**
-that shows:
-
-- Overall sync status banner (MATCH / MISMATCH / ERROR)
-- REMOTE COUNT / LOCAL COUNT tiles (live, source-aware)
-- Web status service state (`pf-web-status.service`)
-- PicFrame service state (`picframe.service`)
-- Current remote (e.g., `gdt - Google Drive (gdt_frame)` or `kfr - Koofr (kfr_frame)`)
-- Last run / last service restart / last file download times
-- Tail of `frame_sync.log`
-- On-demand `chk_sync.sh --d` run with captured stdout/stderr
-
-### How the dashboard gets its data
-
-- **Counts & current remote**  
-  - Runs `chk_sync.sh` and parses:
-    - `Remote file count: N`
-    - `Local  file count: M`
-  - Uses `frame_live` + `frame_sources.conf` (via `get_current_remote_label()`)
-    to display the active source label.
-- **Last run / last restart / last file download**  
-  - Reads `~/logs/frame_sync.log` and uses `chk_status.sh`-style parsing to
-    find:
-    - Latest `SYNC_RESULT:` line
-    - Latest service restart line
-    - Latest `rclone sync completed successfully.` line
-- **Service statuses**  
-  - `systemctl is-active pf-web-status.service`
-  - `systemctl --user is-active picframe.service`
-
-All visualization is read-only; the dashboard never changes files or services
-on its own.
+- Last file download
+- Last service restart
 
 ---
 
@@ -275,7 +189,6 @@ Suggested cron entry (every 15 minutes):
 ```cron
 */15 * * * * /home/pi/picframe_3.0/app_control/frame_sync_cron.sh
 ```
-
 ---
 
 ## 🧪 Test Scripts — t_frame_sync.sh & t_chk_sync.sh
@@ -283,8 +196,7 @@ Suggested cron entry (every 15 minutes):
 The `t_*.sh` scripts are used for development & testing:
 
 - `t_frame_sync.sh` – test harness for new sync and SAFE_MODE features.
-- `t_chk_sync.sh` – test harness for new check logic (including dynamic source
-  detection and count formatting).
+- `t_chk_sync.sh` – test harness for new check logic.
 
 The typical workflow is:
 
@@ -298,78 +210,67 @@ The typical workflow is:
 
 ## 🚀 promote_to_prod.sh
 
-### Promotion Workflow (PC Only)
-
+Promotion Workflow (New – PC Only)
 Picframe now uses a clean two-stage workflow:
 
-1. **Development & testing (PC)**  
-   All code changes, including updates to test scripts (`t_frame_sync.sh`,
-   `t_chk_sync.sh`, etc.), are done on your **PC** repo:
+  1. Development & testing (PC)
+  All code changes, including updates to test scripts (t_frame_sync.sh, t_chk_sync.sh, etc.), are done on your PC repo:
+```bash
+~/Downloads/GitHub/picframe_3.0
+```
 
-   ```bash
-   ~/Downloads/GitHub/picframe_3.0
-   ```
+The Pi should not be used for editing scripts inside the repo.
+2. Promotion to Production (PC Only)
+  Once changes are tested and working, run:
+```bash  
+./ops_tools/promote_to_prod.sh
+```
 
-   The Pi should not be used for editing scripts inside the repo.
+This script (PC-only):
+  Archives existing production scripts (frame_sync.sh, chk_sync.sh)
+  Prunes the archive to the most recent 10 versions
+  Copies all t_*.sh files → production filenames
+  (e.g., t_frame_sync.sh → frame_sync.sh)
+  Leaves the t_*.sh test scripts intact
+  Performs a Git add, commit, tag, and push to GitHub
+  Blocks execution on the Pi (kframe) to keep Pi read-only
+  After running this promotion script, GitHub contains the new production scripts.
 
-2. **Promotion to Production (PC Only)**  
-
-   Once changes are tested and working, run:
-
-   ```bash
-   ./ops_tools/promote_to_prod.sh
-   ```
-
-   This script (PC-only):
-
-   - Archives existing production scripts (`frame_sync.sh`, `chk_sync.sh`)
-   - Prunes the archive to the most recent 10 versions
-   - Copies all `t_*.sh` files → production filenames  
-     (e.g., `t_frame_sync.sh` → `frame_sync.sh`)
-   - Leaves the `t_*.sh` test scripts intact
-   - Performs a Git add, commit, tag, and push to GitHub
-   - Blocks execution on the Pi (kframe) to keep Pi read-only
-
-   After running this promotion script, GitHub contains the new production scripts.
-
-### Updating the Pi After Promotion
-
-The Pi never edits code. It only **pulls updates**.
+Updating the Pi After Promotion
+  The Pi never edits code.
+  It only pulls updates.
 
 On the Pi, run:
-
 ```bash
-~/picframe_3.0/ops_tools/update_app.sh
+~/picframe_3.0/ops_tools/update_picframe.sh
 ```
 
 This script:
-
-- Performs a pull/rebase (no committing or tagging)
-- Refreshes the Pi crontab from `config/crontab`
-- Restarts `picframe.service`
-- Restarts the Flask web dashboard service (`pf-web-status.service`)
+  Performs a pull/rebase (no committing or tagging)
+  Refreshes the Pi crontab from app_control/crontab
+  Restarts picframe.service
 
 The Pi repo stays consistent with GitHub and remains read-only.
 
 ---
 
-## 🔁 update_app.sh
+## 🔁 update_picframe.sh
 
-`update_app.sh` handles bringing the local repository up-to-date and ensuring
-the automation is wired correctly.
+Handles bringing the local repository up-to-date and ensuring the automation
+is wired correctly.
 
 Typical responsibilities:
 
-- Run your `git sync` alias (or equivalent) to pull from GitHub.
+- Run `git sync` to pull from GitHub and push any committed local changes.
 - Apply correct execute permissions to key scripts.
-- Install `config/crontab` into the user's crontab.
+- Install `app_control/crontab` into the user's crontab.
 - Restart the PicFrame service.
-- Restart the Flask web service (`pf-web-status.service`).
+- Restart the Flaks web service.
 
 Usage:
 
 ```bash
-bash ~/picframe_3.0/ops_tools/update_app.sh
+bash ~/picframe_3.0/ops_tools/update_picframe.sh
 ```
 
 ---
@@ -405,8 +306,8 @@ bash ~/picframe_3.0/ops_tools/update_app.sh
   ```
 
 - Dashboard hosted on port 5050:
-  - `http://<ip address>:5050`
-
+  - http://<ip address>:5050
+  
 ---
 
 ## 🧠 Git Shortcuts
@@ -420,37 +321,6 @@ git commit # runs "git commit -am" (add tracked files + commit)
 ```
 
 These commands streamline keeping the Pi and your PC repo in sync.
-
----
-
-# 📌 Recent Updates (2025-11-28)
-
-### ✅ Dynamic Source Detection Added
-- `chk_sync.sh` and `t_chk_sync.sh` now detect the active photo source dynamically using:
-  - `/home/pi/Pictures/frame_live` (symlink)
-  - `config/frame_sources.conf`
-- Works with both `gdt_frame` (Google Drive) and `kfr_frame` (Koofr).
-
-### ✅ Dashboard Now Shows Source-Aware File Counts
-- Flask dashboard (`web_status/app.py`) now:
-  - Runs `chk_sync.sh` to retrieve **Remote file count** / **Local file count**
-  - Shows counts from the **active source**, not hardcoded Google Drive values.
-  - Displays the active source label (`gdt – Google Drive` or `kfr – Koofr`).
-
-### ✅ Web Dashboard Layout Fixes
-- Fixed HTML structure: status card and tools card are now **separate**, not nested.
-- Both cards now align properly at the top of the grid.
-- Left/status card widened to prevent text wrapping of “Current Remote”.
-- Removed legacy margin rules causing vertical misalignment.
-- Cleaned up CSS to ensure consistent top alignment via:
-  ```css
-  align-items: start;
-  ```
-
-### ✅ `update_app.sh` Improvements
-- Ensures:
-  - Flask service (`pf-web-status.service`) is restarted after updates.
-  - Crontab template (`config/crontab`) is refreshed on each update.
 
 ---
 
