@@ -97,7 +97,7 @@ DASHBOARD_HTML = """
         }
         .grid {
             display: grid;
-            grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+            grid-template-columns: minmax(0, 2.7fr) minmax(0, 3fr);
             gap: 1.25rem;
         }
         @media (max-width: 900px) {
@@ -213,7 +213,8 @@ DASHBOARD_HTML = """
         }
         .svc-lines {
             margin-top: 0.9rem;
-            display: flex;
+            margin-left: -4.0rem;   /* pull WEB/PICFRAME/CURRENT REMOTE left */
+	    display: flex;
             flex-direction: column;
             gap: 0.3rem;
         }
@@ -228,7 +229,7 @@ DASHBOARD_HTML = """
             color: #9ca3af;
             text-transform: uppercase;
             letter-spacing: 0.08em;
-            min-width: 9.5rem;
+            min-width: 8rem; /*9.5rem;*/
         }
         .svc-indicator {
             display: inline-flex;
