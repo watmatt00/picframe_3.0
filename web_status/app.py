@@ -114,9 +114,6 @@ DASHBOARD_HTML = """
             border: 1px solid rgba(55,65,81,0.9);
             box-shadow: 0 10px 35px rgba(0,0,0,0.6);
         }
-        .grid > .card:nth-child(2) {
-            margin-top: 0.75rem;
-        }
         .tools-card {
             margin-top: 0rem;
         }
