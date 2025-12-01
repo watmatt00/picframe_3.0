@@ -17,18 +17,19 @@ REPO_ROOT="$HOME/Downloads/GitHub/picframe_3.0"
 OPS_DIR="$REPO_ROOT/ops_tools"
 ARCHIVE_DIR="$OPS_DIR/archive"
 LOG_FILE="$HOME/logs/frame_sync.log"
+mkdir -p "$HOME/logs"
 
 TIMESTAMP="$(date '+%Y%m%d-%H%M')"
 
 # Safety: never run on the Pi
 HOSTNAME="$(hostname)"
 if [[ "$HOSTNAME" == "kframe" ]]; then
-    echo "ERROR: Do NOT run promote_to_prod.sh on the Pi." | tee -a "$LOG_FILE"
+    echo "ERROR: Do NOT run promote_to_prod.sh on the Pi." | tee -a "$LOG_FILE" >&2
     exit 1
 fi
 
 log_message() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') promote_to_prod.sh - $1" | tee -a "$LOG_FILE"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') promote_to_prod.sh - $1" | tee -a "$LOG_FILE" >&2
 }
 
 log_message "=== Starting promotion to production on PC ==="
@@ -110,8 +111,8 @@ log_message "Committing changes to Git..."
 
 git add .
 git commit -m "Promote to prod: $TIMESTAMP"
-git tag -f "prod-$TIMESTAMP"
+git tag "prod-$TIMESTAMP"
 git push
-git push --tags --force
+git push --tags
 
 log_message "=== Promotion completed successfully ==="
