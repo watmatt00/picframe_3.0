@@ -231,8 +231,8 @@ quick_mode_flow() {
 
     if [ "$gdir_count_post" -eq "$ldir_count_post" ]; then
         log_message "Final verification: Directories are synchronized."
-        log_message "SYNC_RESULT: OK"
-        return 0
+        log_message "SYNC_RESULT: RESTART"
+        return 2
     else
         log_message "WARNING: Final verification mismatch. Manual check recommended."
         log_message "SYNC_RESULT: RESTART"
@@ -264,8 +264,8 @@ detailed_mode_flow() {
     log_message "Re-running detailed check after sync..."
     if run_detailed_check; then
         log_message "Post-sync detailed check: OK."
-        log_message "SYNC_RESULT: OK"
-        return 0
+        log_message "SYNC_RESULT: RESTART"
+        return 2
     else
         log_message "Post-sync detailed check still shows differences."
         log_message "SYNC_RESULT: RESTART"
