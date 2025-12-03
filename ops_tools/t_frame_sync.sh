@@ -131,7 +131,7 @@ run_detailed_check() {
 restart_picframe_service() {
     log_message "Restarting picframe service: $PICFRAME_SERVICE"
     if systemctl --user restart "$PICFRAME_SERVICE" >>"$LOG_FILE" 2>&1; then
-        log_message "Picframe service restarted successfully."
+        log_message "Service $PICFRAME_SERVICE restarted successfully"
         return 0
     else
         log_message "ERROR: Failed to restart picframe service."
