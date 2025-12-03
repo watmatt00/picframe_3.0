@@ -172,13 +172,13 @@ def _last_web_service_restart():
     env.setdefault("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
 
     try:
-        # Get the last 10 entries for the service
+        # Get entries and grep for Started messages
         cmd = [
             "journalctl",
             "-u", WEB_SERVICE_NAME,
-            "-n", "10",
             "--no-pager",
-            "-o", "short-iso"
+            "-o", "short-iso",
+            "-n", "200"  # Search last 200 lines to find startup message
         ]
         result = subprocess.run(
             cmd,
@@ -192,18 +192,18 @@ def _last_web_service_restart():
         if result.returncode != 0:
             return None
 
-        # Look for "Started" message
+        # Look for systemd "Started" message (not HTTP logs)
         lines = result.stdout.splitlines()
         for line in reversed(lines):
-            if "Started" in line or "started" in line:
+            # Look specifically for systemd[1]: Started messages
+            if "systemd[1]:" in line and "Started" in line:
                 # Extract ISO timestamp from beginning of line
                 try:
-                    # Format: 2025-12-03T12:34:56-0500 hostname systemd[1]: Started...
+                    # Format: 2025-12-03T12:34:56-0700 hostname systemd[1]: Started...
                     parts = line.split()
                     if parts:
                         timestamp_str = parts[0]
                         # Convert ISO format to our format
-                        from datetime import datetime
                         dt = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
                         return dt.strftime("%Y-%m-%d %H:%M:%S")
                 except Exception:
