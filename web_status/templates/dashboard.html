@@ -486,8 +486,8 @@
 
                 <div class="pill-stack-row">
                     <div class="pill-block">
-                        <div class="pill-block-label">Last run</div>
-                        <div class="pill-block-value" id="last-run">--</div>
+                        <div class="pill-block-label">Last web service restart</div>
+                        <div class="pill-block-value" id="last-web-restart">--</div>
                     </div>
                     <div class="pill-block">
                         <div class="pill-block-label">Last service restart</div>
@@ -541,7 +541,7 @@
     const pfText = document.getElementById("pf-status-text");
     const currentRemoteEl = document.getElementById("current-remote");
 
-    const lastRunEl = document.getElementById("last-run");
+    const lastWebRestartEl = document.getElementById("last-web-restart");
     const lastRestartEl = document.getElementById("last-restart");
     const lastDownloadEl = document.getElementById("last-download");
     const logTailEl = document.getElementById("log-tail");
@@ -640,7 +640,7 @@
             currentRemoteEl.textContent = data.current_remote || "--";
 
             const act = data.activity || {};
-            lastRunEl.textContent = act.last_run || nowStr || "—";
+            lastWebRestartEl.textContent = act.last_web_service_restart || "—";
             lastRestartEl.textContent = act.last_service_restart || "—";
             lastDownloadEl.textContent = act.last_file_download || "—";
             logTailEl.textContent = (act.log_tail || "").trim() || "(no log data)";

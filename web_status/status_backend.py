@@ -164,6 +164,55 @@ def _last_matching_timestamp(path: Path, needle: str):
         return None
 
 
+def _last_web_service_restart():
+    """
+    Get the last restart time for pf-web-status.service from systemd journal.
+    """
+    env = os.environ.copy()
+    env.setdefault("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
+
+    try:
+        # Get the last 10 entries for the service
+        cmd = [
+            "journalctl",
+            "-u", WEB_SERVICE_NAME,
+            "-n", "10",
+            "--no-pager",
+            "-o", "short-iso"
+        ]
+        result = subprocess.run(
+            cmd,
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=10,
+            env=env,
+        )
+
+        if result.returncode != 0:
+            return None
+
+        # Look for "Started" message
+        lines = result.stdout.splitlines()
+        for line in reversed(lines):
+            if "Started" in line or "started" in line:
+                # Extract ISO timestamp from beginning of line
+                try:
+                    # Format: 2025-12-03T12:34:56-0500 hostname systemd[1]: Started...
+                    parts = line.split()
+                    if parts:
+                        timestamp_str = parts[0]
+                        # Convert ISO format to our format
+                        from datetime import datetime
+                        dt = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+                        return dt.strftime("%Y-%m-%d %H:%M:%S")
+                except Exception:
+                    continue
+        return None
+    except Exception:
+        return None
+
+
 def parse_log(path: Path):
     last_restart = _last_matching_timestamp(
         path, "Service picframe.service restarted successfully"
@@ -172,10 +221,12 @@ def parse_log(path: Path):
         path, "rclone sync completed successfully"
     )
     log_tail = _tail_lines(path, max_lines=60)
+    last_web_restart = _last_web_service_restart()
 
     return {
         "last_service_restart": last_restart or "--",
         "last_file_download": last_download or "--",
+        "last_web_service_restart": last_web_restart or "--",
         "log_tail": log_tail,
     }
 
@@ -388,6 +439,7 @@ def get_status_payload():
             "activity": {
                 "last_service_restart": log_info["last_service_restart"],
                 "last_file_download": log_info["last_file_download"],
+                "last_web_service_restart": log_info["last_web_service_restart"],
                 "log_tail": log_info["log_tail"],
             },
             "debug": debug,
@@ -413,6 +465,7 @@ def get_status_payload():
             "activity": {
                 "last_service_restart": "--",
                 "last_file_download": "--",
+                "last_web_service_restart": "--",
                 "log_tail": "",
             },
             "debug": debug,
