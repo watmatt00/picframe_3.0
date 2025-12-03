@@ -288,6 +288,9 @@ main() {
 
     local rc
 
+    # Temporarily disable 'set -e' so return codes 0, 1, 2 don't cause script exit
+    set +e
+
     case "$SYNC_MODE" in
         QUICK)
             quick_mode_flow
@@ -303,6 +306,9 @@ main() {
             rc=1
             ;;
     esac
+
+    # Re-enable 'set -e'
+    set -e
 
     log_message "DEBUG: Captured rc=$rc, about to check if restart needed"
 
