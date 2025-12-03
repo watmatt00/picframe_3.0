@@ -501,9 +501,9 @@
 
                 <div class="log-section-header">
                     <span>Log tail (from frame_sync.log)</span>
-                    <button class="log-toggle" id="log-toggle">Hide log ▾</button>
+                    <button class="log-toggle" id="log-toggle">Show log ▸</button>
                 </div>
-                <div class="log-text" id="log-tail"></div>
+                <div class="log-text" id="log-tail" style="display: none;"></div>
 
                 <div class="log-section-header" style="margin-top: 0.9rem;">
                     <span>chk_sync.sh -d output</span>
@@ -553,7 +553,7 @@
     const btnRunDLabel = document.getElementById("btn-run-d-label");
     const logToggle = document.getElementById("log-toggle");
 
-    let logVisible = true;
+    let logVisible = false;
 
     logToggle.addEventListener("click", () => {
         logVisible = !logVisible;
