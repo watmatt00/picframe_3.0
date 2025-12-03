@@ -8,6 +8,9 @@
 
 set -euo pipefail
 
+# Required for systemctl --user to work (same as cron wrapper sets)
+export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+
 # -------------------------------------------------------------------
 # SCRIPT IDENTITY (Option 1)
 # -------------------------------------------------------------------
@@ -301,11 +304,16 @@ main() {
             ;;
     esac
 
+    log_message "DEBUG: Captured rc=$rc, about to check if restart needed"
+
     # If rc == 2 we treat as a "restart recommended/attempted" case.
     if [ "$rc" -eq 2 ]; then
+        log_message "DEBUG: rc is 2, calling restart_picframe_service"
         if restart_picframe_service; then
             enter_safe_mode_if_needed
         fi
+    else
+        log_message "DEBUG: rc is $rc, skipping restart"
     fi
 
     log_message "----- Process complete ($RUN_MODE run: $SCRIPT_NAME) -----"
