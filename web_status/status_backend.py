@@ -203,10 +203,20 @@ def _last_web_service_restart():
                     parts = line.split()
                     if parts:
                         timestamp_str = parts[0]
-                        # Convert ISO format to our format
-                        dt = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+                        # Parse ISO timestamp with timezone
+                        # Handle both formats: 2025-12-03T12:34:56-0700 and 2025-12-03T12:34:56Z
+                        if timestamp_str.endswith('Z'):
+                            timestamp_str = timestamp_str[:-1] + '+00:00'
+                        # For Python 3.7+, fromisoformat should handle the format
+                        # But if it has issues, manually parse
+                        if len(timestamp_str) == 25 and timestamp_str[22] in '+-':
+                            # Format: 2025-12-03T12:34:56-0700 (no colon in timezone)
+                            # Convert to: 2025-12-03T12:34:56-07:00 (with colon)
+                            timestamp_str = timestamp_str[:22] + timestamp_str[22:24] + ':' + timestamp_str[24:]
+                        dt = datetime.fromisoformat(timestamp_str)
                         return dt.strftime("%Y-%m-%d %H:%M:%S")
-                except Exception:
+                except Exception as e:
+                    # If parsing fails, continue to next line
                     continue
         return None
     except Exception:
