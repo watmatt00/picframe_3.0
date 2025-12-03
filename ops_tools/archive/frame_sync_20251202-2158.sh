@@ -8,9 +8,6 @@
 
 set -euo pipefail
 
-# Required for systemctl --user to work (same as cron wrapper sets)
-export XDG_RUNTIME_DIR="/run/user/$(id -u)"
-
 # -------------------------------------------------------------------
 # SCRIPT IDENTITY (Option 1)
 # -------------------------------------------------------------------
@@ -134,7 +131,7 @@ run_detailed_check() {
 restart_picframe_service() {
     log_message "Restarting picframe service: $PICFRAME_SERVICE"
     if systemctl --user restart "$PICFRAME_SERVICE" >>"$LOG_FILE" 2>&1; then
-        log_message "Service $PICFRAME_SERVICE restarted successfully"
+        log_message "Picframe service restarted successfully."
         return 0
     else
         log_message "ERROR: Failed to restart picframe service."
@@ -288,9 +285,6 @@ main() {
 
     local rc
 
-    # Temporarily disable 'set -e' so return codes 0, 1, 2 don't cause script exit
-    set +e
-
     case "$SYNC_MODE" in
         QUICK)
             quick_mode_flow
@@ -306,9 +300,6 @@ main() {
             rc=1
             ;;
     esac
-
-    # Re-enable 'set -e'
-    set -e
 
     # If rc == 2 we treat as a "restart recommended/attempted" case.
     if [ "$rc" -eq 2 ]; then
