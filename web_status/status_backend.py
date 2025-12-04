@@ -172,13 +172,14 @@ def _last_web_service_restart():
     env.setdefault("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
 
     try:
-        # Get entries and grep for Started messages
+        # Get Started messages from last 7 days using journalctl's built-in grep
         cmd = [
             "journalctl",
             "-u", WEB_SERVICE_NAME,
+            "--since", "7 days ago",
+            "-g", r"systemd\[1\]:.*Started",  # Filter at journalctl level
             "--no-pager",
-            "-o", "short-iso",
-            "-n", "200"  # Search last 200 lines to find startup message
+            "-o", "short-iso"
         ]
         result = subprocess.run(
             cmd,
