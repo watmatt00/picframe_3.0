@@ -623,8 +623,16 @@
             const severity = overall.severity || "UNKNOWN";
             const statusText = overall.status_text || "Status unknown";
 
-            overallTitle.textContent = statusText;
-            overallChip.textContent = severity.toLowerCase();
+            // Keep header as "Last sync" always
+            overallTitle.textContent = "Last sync";
+
+            // Map severity to display text
+            let chipText = severity.toLowerCase();
+            if (severity.toUpperCase() === "WARN") {
+                chipText = "warning";
+            }
+            overallChip.textContent = chipText;
+
             overallChip.classList.remove("error", "warn");
             if (severity.toUpperCase() === "ERROR") {
                 overallChip.classList.add("error");
