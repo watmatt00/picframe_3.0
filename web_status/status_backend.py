@@ -416,7 +416,7 @@ def get_status_payload():
 
         if quick_status == "match":
             severity = "OK"
-            overall_text = "Last sync succeeded"
+            overall_text = "Last sync"
         elif quick_status == "differ":
             severity = "WARN"
             overall_text = "Counts differ – check needed"
