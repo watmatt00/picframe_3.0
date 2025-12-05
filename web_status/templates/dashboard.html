@@ -416,6 +416,15 @@
         <div class="top-row">
             <!-- Overall status card -->
             <section class="card overall-card">
+                <div class="tools-card-header">
+                    <div>
+                        <div class="tools-title">Status</div>
+                        <div class="tools-subtitle">System sync & services</div>
+                    </div>
+                    <div>
+                        <span class="status-chip" id="git-status-chip" style="font-size: 0.7rem;">checking...</span>
+                    </div>
+                </div>
                 <div class="card-header">
                     <div class="status-label">
                         <span id="overall-title">Status unknown</span>
@@ -486,8 +495,8 @@
 
                 <div class="pill-stack-row">
                     <div class="pill-block">
-                        <div class="pill-block-label">Last web service restart</div>
-                        <div class="pill-block-value" id="last-web-restart">--</div>
+                        <div class="pill-block-label">Last deployment</div>
+                        <div class="pill-block-value" id="last-deployment">--</div>
                     </div>
                     <div class="pill-block">
                         <div class="pill-block-label">Last service restart</div>
@@ -514,7 +523,7 @@
     </main>
 
     <footer>
-        Auto-refreshes every 15 seconds · Designed for Pi on your LAN
+        Auto-refreshes every 5 minutes · Designed for Pi on your LAN
     </footer>
 </div>
 
@@ -540,8 +549,9 @@
     const pfDot = document.getElementById("pf-status-dot");
     const pfText = document.getElementById("pf-status-text");
     const currentRemoteEl = document.getElementById("current-remote");
+    const gitStatusChip = document.getElementById("git-status-chip");
 
-    const lastWebRestartEl = document.getElementById("last-web-restart");
+    const lastDeploymentEl = document.getElementById("last-deployment");
     const lastRestartEl = document.getElementById("last-restart");
     const lastDownloadEl = document.getElementById("last-download");
     const logTailEl = document.getElementById("log-tail");
@@ -639,8 +649,22 @@
 
             currentRemoteEl.textContent = data.current_remote || "--";
 
+            // Update git status
+            const gitStatus = data.git_status || {};
+            const commitsBehind = gitStatus.commits_behind;
+            if (commitsBehind === null || commitsBehind === undefined) {
+                gitStatusChip.textContent = "unknown";
+                gitStatusChip.className = "status-chip";
+            } else if (commitsBehind === 0) {
+                gitStatusChip.textContent = "up to date";
+                gitStatusChip.className = "status-chip";
+            } else {
+                gitStatusChip.textContent = `${commitsBehind} behind`;
+                gitStatusChip.className = "status-chip warn";
+            }
+
             const act = data.activity || {};
-            lastWebRestartEl.textContent = act.last_web_service_restart || "—";
+            lastDeploymentEl.textContent = act.last_deployment || "—";
             lastRestartEl.textContent = act.last_service_restart || "—";
             lastDownloadEl.textContent = act.last_file_download || "—";
             logTailEl.textContent = (act.log_tail || "").trim() || "(no log data)";
@@ -676,9 +700,9 @@
     document.getElementById("btn-refresh").addEventListener("click", refreshStatus);
     document.getElementById("btn-run-d").addEventListener("click", runChkSyncD);
 
-    // initial load + auto-refresh
+    // initial load + auto-refresh every 5 minutes
     refreshStatus();
-    setInterval(refreshStatus, 15000);
+    setInterval(refreshStatus, 300000);
 </script>
 </body>
 </html>

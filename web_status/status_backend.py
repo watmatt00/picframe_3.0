@@ -164,61 +164,66 @@ def _last_matching_timestamp(path: Path, needle: str):
         return None
 
 
-def _last_web_service_restart():
+def _get_last_deployment():
     """
-    Get the last restart time for pf-web-status.service from systemd journal.
+    Get timestamp of last git commit.
+    Returns string in format "YYYY-MM-DD HH:MM:SS" or None.
     """
-    env = os.environ.copy()
-    env.setdefault("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
+    repo_root = Path(__file__).parent.parent  # picframe_3.0 directory
 
     try:
-        # Get Started messages from last 7 days using journalctl's built-in grep
-        cmd = [
-            "journalctl",
-            "-u", WEB_SERVICE_NAME,
-            "--since", "7 days ago",
-            "-g", r"systemd\[1\]:.*Started",  # Filter at journalctl level
-            "--no-pager",
-            "-o", "short-iso"
-        ]
         result = subprocess.run(
-            cmd,
+            ["git", "log", "-1", "--format=%ci"],
+            cwd=repo_root,
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=5,
+        )
+
+        if result.returncode == 0 and result.stdout.strip():
+            # Git format: "2025-12-04 14:23:16 -0700"
+            # Take just the date and time part (first 19 chars)
+            timestamp_str = result.stdout.strip()
+            return timestamp_str[:19]  # "2025-12-04 14:23:16"
+
+        return None
+    except Exception:
+        return None
+
+
+def _get_commits_behind():
+    """
+    Check how many commits behind origin/main.
+    Returns integer count or None if cannot determine.
+    """
+    repo_root = Path(__file__).parent.parent
+
+    try:
+        # Try to fetch from origin (with short timeout)
+        subprocess.run(
+            ["git", "fetch", "origin", "main"],
+            cwd=repo_root,
             text=True,
             capture_output=True,
             check=False,
             timeout=10,
-            env=env,
         )
 
-        if result.returncode != 0:
-            return None
+        # Count commits behind
+        result = subprocess.run(
+            ["git", "rev-list", "HEAD..origin/main", "--count"],
+            cwd=repo_root,
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=5,
+        )
 
-        # Look for systemd "Started" message (not HTTP logs)
-        lines = result.stdout.splitlines()
-        for line in reversed(lines):
-            # Look specifically for systemd[1]: Started messages
-            if "systemd[1]:" in line and "Started" in line:
-                # Extract ISO timestamp from beginning of line
-                try:
-                    # Format: 2025-12-03T12:34:56-0700 hostname systemd[1]: Started...
-                    parts = line.split()
-                    if parts:
-                        timestamp_str = parts[0]
-                        # Parse ISO timestamp with timezone
-                        # Handle both formats: 2025-12-03T12:34:56-0700 and 2025-12-03T12:34:56Z
-                        if timestamp_str.endswith('Z'):
-                            timestamp_str = timestamp_str[:-1] + '+00:00'
-                        # For Python 3.7+, fromisoformat should handle the format
-                        # But if it has issues, manually parse
-                        if len(timestamp_str) == 25 and timestamp_str[22] in '+-':
-                            # Format: 2025-12-03T12:34:56-0700 (no colon in timezone)
-                            # Convert to: 2025-12-03T12:34:56-07:00 (with colon)
-                            timestamp_str = timestamp_str[:22] + timestamp_str[22:24] + ':' + timestamp_str[24:]
-                        dt = datetime.fromisoformat(timestamp_str)
-                        return dt.strftime("%Y-%m-%d %H:%M:%S")
-                except Exception as e:
-                    # If parsing fails, continue to next line
-                    continue
+        if result.returncode == 0 and result.stdout.strip():
+            count = int(result.stdout.strip())
+            return count
+
         return None
     except Exception:
         return None
@@ -232,12 +237,12 @@ def parse_log(path: Path):
         path, "rclone sync completed successfully"
     )
     log_tail = _tail_lines(path, max_lines=60)
-    last_web_restart = _last_web_service_restart()
+    last_deployment = _get_last_deployment()
 
     return {
         "last_service_restart": last_restart or "--",
         "last_file_download": last_download or "--",
-        "last_web_service_restart": last_web_restart or "--",
+        "last_deployment": last_deployment or "--",
         "log_tail": log_tail,
     }
 
@@ -432,6 +437,9 @@ def get_status_payload():
         if not current_remote or current_remote == "--":
             current_remote = _current_remote_from_quick(quick.get("raw_output"))
 
+        # Get git status info
+        commits_behind = _get_commits_behind()
+
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         return {
@@ -447,10 +455,13 @@ def get_status_payload():
             "web_status": web_status,
             "pf_status": pf_status,
             "current_remote": current_remote or "--",
+            "git_status": {
+                "commits_behind": commits_behind if commits_behind is not None else None,
+            },
             "activity": {
                 "last_service_restart": log_info["last_service_restart"],
                 "last_file_download": log_info["last_file_download"],
-                "last_web_service_restart": log_info["last_web_service_restart"],
+                "last_deployment": log_info["last_deployment"],
                 "log_tail": log_info["log_tail"],
             },
             "debug": debug,
@@ -473,10 +484,13 @@ def get_status_payload():
             "web_status": "unknown",
             "pf_status": "unknown",
             "current_remote": "--",
+            "git_status": {
+                "commits_behind": None,
+            },
             "activity": {
                 "last_service_restart": "--",
                 "last_file_download": "--",
-                "last_web_service_restart": "--",
+                "last_deployment": "--",
                 "log_tail": "",
             },
             "debug": debug,
