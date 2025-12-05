@@ -629,7 +629,7 @@
             const statusText = overall.status_text || "Status unknown";
 
             overallTitle.textContent = statusText;
-            overallChip.textContent = severity;
+            overallChip.textContent = severity.toLowerCase();
             overallChip.classList.remove("error", "warn");
             if (severity.toUpperCase() === "ERROR") {
                 overallChip.classList.add("error");
@@ -676,7 +676,7 @@
             bannerText.textContent = "Error fetching status";
             setBannerForSeverity("ERROR");
             overallTitle.textContent = "Status unknown";
-            overallChip.textContent = "ERROR";
+            overallChip.textContent = "error";
         } finally {
             btnRefresh.disabled = false;
         }
