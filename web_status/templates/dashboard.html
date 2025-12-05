@@ -427,10 +427,6 @@
                         <span id="overall-title" style="width: 150px;">Last sync</span>
                         <span class="status-chip" id="overall-chip" style="font-size: 0.7rem;">--</span>
                     </div>
-                    <div class="K">
-                        <span class="K-dot"></span>
-                        <span id="k-status-text">status · unknown</span>
-                    </div>
                 </div>
                 <div class="card-header">
                     <div class="status-label">
@@ -538,7 +534,6 @@
 
     const overallTitle = document.getElementById("overall-title");
     const overallChip = document.getElementById("overall-chip");
-    const kStatusText = document.getElementById("k-status-text");
 
     const trafficGreen = document.getElementById("traffic-green");
     const trafficAmber = document.getElementById("traffic-amber");
@@ -636,7 +631,6 @@
             } else if (severity.toUpperCase() === "WARN") {
                 overallChip.classList.add("warn");
             }
-            kStatusText.textContent = "status · " + severity.toLowerCase();
             bannerText.textContent = statusText;
 
             setTrafficLights(severity);
