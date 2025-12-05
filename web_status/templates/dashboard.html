@@ -424,12 +424,22 @@
                 </div>
                 <div class="card-header">
                     <div class="status-label">
-                        <span id="overall-title">Status unknown</span>
+                        <span id="overall-title">Last sync</span>
                         <span class="status-chip" id="overall-chip">--</span>
                     </div>
                     <div class="K">
                         <span class="K-dot"></span>
                         <span id="k-status-text">status · unknown</span>
+                    </div>
+                </div>
+                <div class="card-header">
+                    <div class="status-label">
+                        <span>Code status</span>
+                        <span class="status-chip" id="git-status-chip" style="font-size: 0.7rem;">checking...</span>
+                    </div>
+                    <div class="K">
+                        <span style="visibility: hidden;" class="K-dot"></span>
+                        <span></span>
                     </div>
                 </div>
                 <div class="overall-inner">
@@ -465,11 +475,6 @@
 
                             <div class="service-label">Current remote</div>
                             <div class="service-value remote-label" id="current-remote">--</div>
-
-                            <div class="service-label">Code status</div>
-                            <div class="service-value">
-                                <span class="status-chip" id="git-status-chip" style="font-size: 0.7rem;">checking...</span>
-                            </div>
                         </div>
                     </div>
                 </div>
