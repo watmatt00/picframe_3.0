@@ -103,10 +103,10 @@ def run_quick_check():
 
         # Quick check line
         if "quick check" in lower:
-            if "match" in lower:
-                quick_status = "match"
-            elif "differ" in lower:
+            if "mismatch" in lower or "differ" in lower:
                 quick_status = "differ"
+            elif "match" in lower:
+                quick_status = "match"
             elif "error" in lower or "failed" in lower:
                 quick_status = "error"
 
