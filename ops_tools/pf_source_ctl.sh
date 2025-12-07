@@ -5,7 +5,7 @@ set -euo pipefail
 # pf_source_ctl.sh
 #
 # Unified controller for PicFrame photo source selection.
-# - Manages the /home/pi/Pictures/frame_live symlink
+# - Manages the frame_live symlink (path from config)
 # - Reads available sources from config/frame_sources.conf
 # - Restarts picframe.service when the source changes
 #
@@ -20,22 +20,32 @@ set -euo pipefail
 #   pf_source_ctl.sh set kfr
 # -------------------------------------------------------------------
 
-APP_ROOT="/home/pi/picframe_3.0"
-CONFIG_FILE="${APP_ROOT}/config/frame_sources.conf"
-SYMLINK_PATH="/home/pi/Pictures/frame_live"
+# -------------------------------------------------------------------
+# LOAD CONFIGURATION
+# -------------------------------------------------------------------
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=../lib/config_loader.sh
+source "${SCRIPT_DIR}/../lib/config_loader.sh"
+
+if ! load_config; then
+    echo "ERROR: Failed to load config. Run setup first." >&2
+    exit 1
+fi
+
+# -------------------------------------------------------------------
+# CONFIGURATION (from config file)
+# -------------------------------------------------------------------
+# APP_ROOT - loaded from config
+# FRAME_SOURCES_CONF - derived in config_loader.sh
+CONFIG_FILE="${FRAME_SOURCES_CONF}"
+SYMLINK_PATH="${FRAME_LIVE_PATH:-/home/pi/Pictures/frame_live}"
 PF_SERVICE_NAME="picframe.service"
 
 # -------------------------------------------------------------------
-# Safety: only run as user 'pi' on host 'kframe'
+# Safety: check allowed user/host from config
 # -------------------------------------------------------------------
-
-CURRENT_HOST="$(hostname -s 2>/dev/null || hostname 2>/dev/null || echo "unknown")"
-CURRENT_USER="$(id -un 2>/dev/null || echo "unknown")"
-
-if [[ "${CURRENT_HOST}" != "kframe" || "${CURRENT_USER}" != "pi" ]]; then
-    ts="$(date '+%Y-%m-%d %H:%M:%S')"
-    echo "${ts} pf_source_ctl.sh - ERROR: This script must be run as user 'pi' on host 'kframe'." >&2
-    echo "${ts} pf_source_ctl.sh - Current context: user='${CURRENT_USER}', host='${CURRENT_HOST}'." >&2
+if ! check_allowed_context; then
     exit 1
 fi
 

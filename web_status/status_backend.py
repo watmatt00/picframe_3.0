@@ -14,12 +14,30 @@ from collections import deque
 from datetime import datetime
 from pathlib import Path
 
+from config_manager import (
+    config_exists,
+    read_config,
+    get_derived_paths,
+    get_config_with_defaults,
+)
+
 # --- Paths / service names ---------------------------------------------------
 
-LOG_PATH = Path("/home/pi/logs/frame_sync.log")
-CHK_SCRIPT = Path("/home/pi/picframe_3.0/ops_tools/chk_sync.sh")
-FRAME_SOURCES_CONF = Path("/home/pi/picframe_3.0/config/frame_sources.conf")
+def _get_paths():
+    """Get paths from config, with fallback defaults for backwards compatibility."""
+    if config_exists():
+        return get_derived_paths()
+    # Fallback to hardcoded defaults if no config exists yet
+    return {
+        "log_file": Path("/home/pi/logs/frame_sync.log"),
+        "chk_script": Path("/home/pi/picframe_3.0/ops_tools/chk_sync.sh"),
+        "frame_sources_conf": Path("/home/pi/picframe_3.0/config/frame_sources.conf"),
+        "frame_live": Path("/home/pi/Pictures/frame_live"),
+        "app_root": Path("/home/pi/picframe_3.0"),
+        "log_dir": Path("/home/pi/logs"),
+    }
 
+# Service names
 WEB_SERVICE_NAME = "pf-web-status.service"   # system service
 PF_SERVICE_NAME = "picframe.service"         # user service (systemctl --user)
 
@@ -54,9 +72,12 @@ def run_quick_check():
     env = os.environ.copy()
     env.setdefault("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
 
+    paths = _get_paths()
+    chk_script = paths["chk_script"]
+
     try:
         result = subprocess.run(
-            [str(CHK_SCRIPT)],
+            [str(chk_script)],
             text=True,
             capture_output=True,
             check=False,
@@ -337,6 +358,10 @@ def get_status_payload():
     severity="ERROR" and a debug.error field.
     """
     debug = {}
+    paths = _get_paths()
+    log_path = paths["log_file"]
+    chk_script = paths["chk_script"]
+    frame_sources_conf = paths["frame_sources_conf"]
 
     try:
         quick = run_quick_check()
@@ -360,12 +385,12 @@ def get_status_payload():
             severity = "UNKNOWN"
             overall_text = "Status unknown"
 
-        log_info = parse_log(LOG_PATH)
+        log_info = parse_log(log_path)
         web_status = _systemctl_status(WEB_SERVICE_NAME, user=False)
         pf_status = _systemctl_status(PF_SERVICE_NAME, user=True)
 
         # Primary source: config file
-        current_remote = _current_remote_from_conf(FRAME_SOURCES_CONF)
+        current_remote = _current_remote_from_conf(frame_sources_conf)
         # Fallback: parse from chk_sync.sh output if config is missing/empty
         if not current_remote or current_remote == "--":
             current_remote = _current_remote_from_quick(quick.get("raw_output"))
@@ -374,8 +399,8 @@ def get_status_payload():
 
         return {
             "now": now_str,
-            "script_path": str(CHK_SCRIPT),
-            "log_path": str(LOG_PATH),
+            "script_path": str(chk_script),
+            "log_path": str(log_path),
             "overall": {
                 "remote_count": remote_count,
                 "local_count": local_count,
@@ -399,8 +424,8 @@ def get_status_payload():
 
         return {
             "now": now_str,
-            "script_path": str(CHK_SCRIPT),
-            "log_path": str(LOG_PATH),
+            "script_path": str(chk_script),
+            "log_path": str(log_path),
             "overall": {
                 "remote_count": None,
                 "local_count": None,
@@ -423,12 +448,15 @@ def run_chk_sync_detailed():
     """
     Run chk_sync.sh --d and return its stdout/stderr for the tools card.
     """
+    paths = _get_paths()
+    chk_script = paths["chk_script"]
+
     env = os.environ.copy()
     env.setdefault("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
 
     try:
         result = subprocess.run(
-            [str(CHK_SCRIPT), "--d"],
+            [str(chk_script), "--d"],
             text=True,
             capture_output=True,
             check=False,
@@ -452,3 +480,57 @@ def run_chk_sync_detailed():
             "ok": False,
             "output": f"Error running chk_sync.sh --d: {e}",
         }
+
+
+# ---------------------------------------------------------------------------
+# Source helpers (for API endpoints)
+# ---------------------------------------------------------------------------
+
+def get_sources_from_conf():
+    """
+    Parse frame_sources.conf and return list of sources.
+    
+    Returns list of dicts with: id, label, path, enabled, active, remote
+    """
+    sources = []
+    paths = _get_paths()
+    conf_path = paths["frame_sources_conf"]
+    frame_live = paths["frame_live"]
+    
+    if not conf_path.exists():
+        return sources
+    
+    # Determine current active source from symlink
+    current_target = None
+    if frame_live.is_symlink():
+        try:
+            current_target = str(frame_live.resolve())
+        except Exception:
+            pass
+    
+    try:
+        for line in conf_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            
+            parts = line.split("|")
+            if len(parts) >= 4:
+                src_id = parts[0]
+                label = parts[1]
+                path = parts[2]
+                enabled = parts[3]
+                remote = parts[4] if len(parts) > 4 else ""
+                
+                sources.append({
+                    "id": src_id,
+                    "label": label,
+                    "path": path,
+                    "enabled": enabled == "1",
+                    "active": current_target == path,
+                    "remote": remote,
+                })
+    except Exception:
+        pass
+    
+    return sources

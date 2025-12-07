@@ -1,0 +1,52 @@
+# ~/.picframe/config - PicFrame Configuration
+# ============================================
+# Copy this file to ~/.picframe/config and edit for your setup.
+#
+# On first run, the web dashboard will prompt you to configure these
+# settings via a setup wizard. Alternatively, copy this file and edit
+# manually:
+#
+#   mkdir -p ~/.picframe
+#   cp /path/to/picframe_3.0/config/config.example ~/.picframe/config
+#   nano ~/.picframe/config
+#
+# Then validate with:
+#   ./ops_tools/validate_config.sh
+# ============================================
+
+# === REQUIRED SETTINGS ===
+
+# Your rclone remote name and path
+# Run 'rclone config' first to set up your remote, then use:
+#   rclone listremotes   # to see available remotes
+#   rclone lsf <remote>:<path>  # to test
+RCLONE_REMOTE="mydrive:photos"
+
+# Local directory where photos are synced
+# This is where rclone will download photos to
+LOCAL_DIR="/home/pi/Pictures/frame"
+
+# === OPTIONAL SETTINGS ===
+
+# Where PicFrame is installed (usually auto-detected)
+APP_ROOT="/home/pi/picframe_3.0"
+
+# Log file directory
+LOG_DIR="/home/pi/logs"
+
+# Hostname for safety checks
+# Scripts will only run if current hostname matches this value
+# Leave empty to disable hostname checking
+ALLOWED_HOST=""
+
+# User account that runs picframe
+# Scripts will only run if current user matches this value
+ALLOWED_USER="pi"
+
+# Active source ID (from frame_sources.conf)
+# This determines which photo source is currently active
+ACTIVE_SOURCE=""
+
+# Symlink path for frame_live
+# The picframe application reads photos from this symlink
+FRAME_LIVE_PATH="/home/pi/Pictures/frame_live"

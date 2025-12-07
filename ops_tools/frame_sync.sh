@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# t_frame_sync.sh — Test version
-# Sync local photo frame folder with Google Drive via rclone
+# frame_sync.sh
+# Sync local photo frame folder with cloud storage via rclone
 # Intended to run every 15 minutes (from cron or systemd timer)
 # Author: Matt P / ChatGPT optimized version
 #
@@ -9,9 +9,10 @@
 set -euo pipefail
 
 # -------------------------------------------------------------------
-# SCRIPT IDENTITY (Option 1)
+# SCRIPT IDENTITY
 # -------------------------------------------------------------------
 SCRIPT_NAME="$(basename "$0")"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [[ "$SCRIPT_NAME" == t_* ]]; then
     RUN_MODE="TEST"
@@ -20,21 +21,34 @@ else
 fi
 
 # -------------------------------------------------------------------
-# CONFIGURATION
+# LOAD CONFIGURATION
 # -------------------------------------------------------------------
-# Example: replace the existing REMOTE/LDIR lines with these:
+# shellcheck source=../lib/config_loader.sh
+source "${SCRIPT_DIR}/../lib/config_loader.sh"
 
-RCLONE_REMOTE="kfrphotos:KFR_kframe"
-LDIR="$HOME/Pictures/kfr_frame"
+if ! load_config; then
+    echo "ERROR: Failed to load config. Run setup first." >&2
+    exit 1
+fi
 
-#RCLONE_REMOTE="kfgdrive:dframe"          # rclone remote:path
-#LDIR="$HOME/Pictures/gdt_frame"          # local directory for frame photos
+if ! validate_config; then
+    echo "ERROR: Invalid config. Check ~/.picframe/config" >&2
+    exit 1
+fi
 
-LOG_DIR="$HOME/logs"
-LOG_FILE="$LOG_DIR/frame_sync.log"
+# -------------------------------------------------------------------
+# CONFIGURATION (from config file)
+# -------------------------------------------------------------------
+# RCLONE_REMOTE - loaded from config
+# LOCAL_DIR - loaded from config
+# LOG_DIR - loaded from config
+# LOG_FILE - derived in config_loader.sh
+
+# Map config names to script variables
+LDIR="$LOCAL_DIR"
 
 # Optional safe-mode flag for consecutive restart detection
-SAFE_MODE_FILE="$HOME/picframe_3.0/ops_tools/safe_mode.flag"
+SAFE_MODE_FILE="${APP_ROOT}/ops_tools/safe_mode.flag"
 
 # Picframe systemd user service
 PICFRAME_SERVICE="picframe.service"

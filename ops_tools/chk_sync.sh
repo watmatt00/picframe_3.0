@@ -1,11 +1,27 @@
 #!/bin/bash
 set -euo pipefail
-# t_chk_sync.sh
+# chk_sync.sh
 # Purpose: Quickly compare *current active* remote folder vs. local directory
 # using file counts by default. Use --d for a detailed rclone check.
 # When run in default (quick) mode, also shows a status summary via chk_status.sh.
 #
-# Detects the active source (Google vs Koofr) from frame_live symlink.
+# Detects the active source dynamically from frame_live symlink and frame_sources.conf.
+
+# -------------------------------------------------------------------
+# SCRIPT SETUP
+# -------------------------------------------------------------------
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# -------------------------------------------------------------------
+# LOAD CONFIGURATION
+# -------------------------------------------------------------------
+# shellcheck source=../lib/config_loader.sh
+source "${SCRIPT_DIR}/../lib/config_loader.sh"
+
+if ! load_config; then
+    echo "ERROR: Failed to load config. Run setup first." >&2
+    exit 1
+fi
 
 # -------------------------------------------------------------------
 # TTY / ENV SAFETY
@@ -16,58 +32,61 @@ if [[ -t 1 ]]; then
 fi
 
 # -------------------------------------------------------------------
-# CONFIGURATION
+# CONFIGURATION (from config file)
 # -------------------------------------------------------------------
-FRAME_LIVE="/home/pi/Pictures/frame_live"
-
-GDT_LOCAL="/home/pi/Pictures/gdt_frame"
-KFR_LOCAL="/home/pi/Pictures/kfr_frame"
-
-GDT_REMOTE="kfgdrive:dframe"
-KFR_REMOTE="kfrphotos:KFR_kframe"
-
-RCLONE_REMOTE="$GDT_REMOTE"
-LOCAL_DIR="$GDT_LOCAL"
-ACTIVE_SOURCE_ID="gdt"
-ACTIVE_SOURCE_LABEL="gdt - Google Drive (gdt_frame)"
-
-LOG_FILE="${LOG_FILE:-$HOME/logs/frame_sync.log}"
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FRAME_LIVE="${FRAME_LIVE_PATH:-/home/pi/Pictures/frame_live}"
 STATUS_SCRIPT="$SCRIPT_DIR/chk_status.sh"
 
+# These will be set by detect_active_source()
+RCLONE_REMOTE=""
+LOCAL_DIR=""
+ACTIVE_SOURCE_ID=""
+ACTIVE_SOURCE_LABEL=""
+
 # -------------------------------------------------------------------
-# SOURCE DETECTION
+# SOURCE DETECTION (dynamic from frame_sources.conf)
 # -------------------------------------------------------------------
 detect_active_source() {
     local target=""
+    local conf_file="${FRAME_SOURCES_CONF:-${APP_ROOT}/config/frame_sources.conf}"
 
+    # Get the symlink target
     if [[ -L "$FRAME_LIVE" ]]; then
-        target=$(readlink -f "$FRAME_LIVE" || true)
+        target=$(readlink -f "$FRAME_LIVE" 2>/dev/null || true)
     fi
 
-    case "$target" in
-        "$GDT_LOCAL")
-            ACTIVE_SOURCE_ID="gdt"
-            ACTIVE_SOURCE_LABEL="gdt - Google Drive (gdt_frame)"
-            RCLONE_REMOTE="$GDT_REMOTE"
-            LOCAL_DIR="$GDT_LOCAL"
-            ;;
-        "$KFR_LOCAL")
-            ACTIVE_SOURCE_ID="kfr"
-            ACTIVE_SOURCE_LABEL="kfr - Koofr (kfr_frame)"
-            RCLONE_REMOTE="$KFR_REMOTE"
-            LOCAL_DIR="$KFR_LOCAL"
-            ;;
-        "")
-            ACTIVE_SOURCE_ID="unknown"
-            ACTIVE_SOURCE_LABEL="frame_live not found or not a symlink"
-            ;;
-        *)
-            ACTIVE_SOURCE_ID="unknown"
-            ACTIVE_SOURCE_LABEL="unknown source backing: $target"
-            ;;
-    esac
+    if [[ -z "$target" ]]; then
+        ACTIVE_SOURCE_ID="unknown"
+        ACTIVE_SOURCE_LABEL="frame_live not found or not a symlink"
+        return 1
+    fi
+
+    # Search frame_sources.conf for matching path
+    if [[ -f "$conf_file" ]]; then
+        while IFS='|' read -r sid label path enabled remote || [[ -n "$sid" ]]; do
+            # Skip comments and empty lines
+            [[ -z "$sid" || "$sid" =~ ^# ]] && continue
+
+            if [[ "$target" == "$path" ]]; then
+                ACTIVE_SOURCE_ID="$sid"
+                ACTIVE_SOURCE_LABEL="$sid - $label"
+                LOCAL_DIR="$path"
+                # Use remote from config if available (5th field), otherwise use global RCLONE_REMOTE
+                if [[ -n "${remote:-}" ]]; then
+                    RCLONE_REMOTE="$remote"
+                else
+                    RCLONE_REMOTE="${RCLONE_REMOTE:-}"
+                fi
+                return 0
+            fi
+        done < "$conf_file"
+    fi
+
+    # No match found in config
+    ACTIVE_SOURCE_ID="unknown"
+    ACTIVE_SOURCE_LABEL="unknown source backing: $target"
+    LOCAL_DIR="$target"
+    return 1
 }
 
 # -------------------------------------------------------------------

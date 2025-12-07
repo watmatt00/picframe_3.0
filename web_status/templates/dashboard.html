@@ -207,7 +207,7 @@
         .service-grid {
             display: grid;
             grid-template-columns: auto auto;
-            column-gap: 2.5rem;
+            column-gap: 0.75rem;
             row-gap: 0.35rem;
             margin-top: 1.2rem;
             font-size: 0.9rem;
@@ -381,6 +381,121 @@
                 width: 100%;
             }
         }
+        /* Settings Form Styles */
+        .settings-card {
+            margin-top: 1.5rem;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-label {
+            display: block;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            opacity: 0.8;
+            margin-bottom: 0.35rem;
+        }
+        .form-input, .form-select {
+            width: 100%;
+            padding: 0.6rem 0.8rem;
+            font-size: 0.9rem;
+            font-family: inherit;
+            background: rgba(15, 23, 42, 0.96);
+            border: 1px solid rgba(55, 65, 81, 0.9);
+            border-radius: 0.5rem;
+            color: #f9fafb;
+        }
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: rgba(59, 130, 246, 0.8);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+        .form-input::placeholder {
+            color: #6b7280;
+        }
+        .form-hint {
+            font-size: 0.7rem;
+            color: #6b7280;
+            margin-top: 0.25rem;
+        }
+        .form-select {
+            cursor: pointer;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        .settings-status {
+            margin-top: 1rem;
+            padding: 0.6rem 0.8rem;
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+        }
+        .settings-status.success {
+            background: rgba(22, 163, 74, 0.15);
+            border: 1px solid rgba(22, 163, 74, 0.5);
+            color: #86efac;
+        }
+        .settings-status.error {
+            background: rgba(220, 38, 38, 0.15);
+            border: 1px solid rgba(248, 113, 113, 0.5);
+            color: #fca5a5;
+        }
+        /* Setup Wizard Modal Styles */
+        .wizard-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .wizard-modal {
+            background: radial-gradient(circle at top left, rgba(148, 163, 184, 0.18), rgba(15, 23, 42, 0.98));
+            border-radius: 1.25rem;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8);
+        }
+        .wizard-header h2 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.5rem;
+        }
+        .wizard-header p {
+            margin: 0;
+            opacity: 0.7;
+            font-size: 0.9rem;
+        }
+        .wizard-body {
+            margin: 1.5rem 0;
+        }
+        .wizard-step h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.1rem;
+        }
+        .wizard-step p {
+            margin: 0 0 1rem 0;
+            font-size: 0.85rem;
+            opacity: 0.8;
+        }
+        .wizard-footer {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+        }
+        .wizard-test-status {
+            margin-top: 0.75rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+        }
     </style>
 </head>
 <body>
@@ -507,11 +622,126 @@
                 <div class="log-text" id="chk-d-output">(not run yet)</div>
             </section>
         </div>
+
+        <!-- Settings Card -->
+        <section class="card settings-card" id="settings-card">
+            <div class="tools-card-header">
+                <div>
+                    <div class="tools-title">Configuration</div>
+                    <div class="tools-subtitle">Sync settings for this device</div>
+                </div>
+                <button class="log-toggle" id="settings-toggle">Collapse</button>
+            </div>
+
+            <div id="settings-body">
+                <div class="form-group">
+                    <label class="form-label">Photo Source</label>
+                    <select id="cfg-source" class="form-select">
+                        <option value="">Loading sources...</option>
+                    </select>
+                    <div class="form-hint">Select which photo source to sync from</div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Rclone Remote</label>
+                    <input type="text" id="cfg-rclone-remote" class="form-input" 
+                           placeholder="mydrive:photos">
+                    <div class="form-hint">Format: remotename:path (run 'rclone config' to set up)</div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Local Photo Directory</label>
+                        <input type="text" id="cfg-local-dir" class="form-input"
+                               placeholder="/home/pi/Pictures/frame">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Log Directory</label>
+                        <input type="text" id="cfg-log-dir" class="form-input"
+                               placeholder="/home/pi/logs">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">App Root Directory</label>
+                        <input type="text" id="cfg-app-root" class="form-input"
+                               placeholder="/home/pi/picframe_3.0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Device Hostname</label>
+                        <input type="text" id="cfg-hostname" class="form-input"
+                               placeholder="(leave empty to disable check)">
+                        <div class="form-hint">Optional: restrict scripts to this host</div>
+                    </div>
+                </div>
+
+                <div class="button-row" style="margin-top: 1rem;">
+                    <button class="btn" id="btn-save-config">Save Settings</button>
+                    <button class="btn secondary" id="btn-test-remote">Test Connection</button>
+                    <button class="btn secondary" id="btn-export-config">Export Config</button>
+                </div>
+
+                <div id="settings-status" class="settings-status" style="display:none;"></div>
+            </div>
+        </section>
     </main>
 
     <footer>
         Auto-refreshes every 15 seconds · Designed for Pi on your LAN
     </footer>
+</div>
+
+<!-- Setup Wizard Modal (shows on first run when no config exists) -->
+<div id="setup-wizard-overlay" class="wizard-overlay" style="display:none;">
+    <div class="wizard-modal">
+        <div class="wizard-header">
+            <h2>Welcome to PicFrame</h2>
+            <p>Let's configure your photo frame in a few quick steps.</p>
+        </div>
+        
+        <div class="wizard-body">
+            <!-- Step 1: Rclone Remote -->
+            <div class="wizard-step" id="wizard-step-1">
+                <h3>Step 1: Rclone Remote</h3>
+                <p>Enter your rclone remote path. If you haven't set up rclone yet, run <code>rclone config</code> in a terminal first.</p>
+                <div class="form-group">
+                    <input type="text" id="wiz-remote" class="form-input" placeholder="mydrive:photos">
+                </div>
+                <button class="btn secondary" id="wiz-test">Test Connection</button>
+                <div id="wiz-test-status" class="wizard-test-status settings-status" style="display:none;"></div>
+            </div>
+            
+            <!-- Step 2: Local Directory -->
+            <div class="wizard-step" id="wizard-step-2" style="display:none;">
+                <h3>Step 2: Local Directory</h3>
+                <p>Where should synced photos be stored on this device?</p>
+                <div class="form-group">
+                    <input type="text" id="wiz-local-dir" class="form-input" value="/home/pi/Pictures/frame">
+                </div>
+            </div>
+            
+            <!-- Step 3: Confirm -->
+            <div class="wizard-step" id="wizard-step-3" style="display:none;">
+                <h3>Step 3: Confirm Settings</h3>
+                <p>Review your configuration:</p>
+                <div class="pill-block" style="margin-bottom:0.5rem;">
+                    <div class="pill-block-label">Rclone Remote</div>
+                    <div class="pill-block-value" id="wiz-confirm-remote">--</div>
+                </div>
+                <div class="pill-block">
+                    <div class="pill-block-label">Local Directory</div>
+                    <div class="pill-block-value" id="wiz-confirm-local">--</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="wizard-footer">
+            <button class="btn secondary" id="wiz-back" style="display:none;">Back</button>
+            <button class="btn" id="wiz-next">Next</button>
+            <button class="btn" id="wiz-finish" style="display:none;">Finish Setup</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -676,6 +906,306 @@
     // initial load + auto-refresh
     refreshStatus();
     setInterval(refreshStatus, 15000);
+
+    // ============ SETTINGS FUNCTIONALITY ============
+
+    const settingsToggle = document.getElementById("settings-toggle");
+    const settingsBody = document.getElementById("settings-body");
+    const settingsStatus = document.getElementById("settings-status");
+
+    const cfgSource = document.getElementById("cfg-source");
+    const cfgRcloneRemote = document.getElementById("cfg-rclone-remote");
+    const cfgLocalDir = document.getElementById("cfg-local-dir");
+    const cfgLogDir = document.getElementById("cfg-log-dir");
+    const cfgAppRoot = document.getElementById("cfg-app-root");
+    const cfgHostname = document.getElementById("cfg-hostname");
+
+    const btnSaveConfig = document.getElementById("btn-save-config");
+    const btnTestRemote = document.getElementById("btn-test-remote");
+    const btnExportConfig = document.getElementById("btn-export-config");
+
+    let settingsVisible = true;
+
+    // Toggle settings panel
+    settingsToggle.addEventListener("click", () => {
+        settingsVisible = !settingsVisible;
+        settingsBody.style.display = settingsVisible ? "block" : "none";
+        settingsToggle.textContent = settingsVisible ? "Collapse" : "Expand";
+    });
+
+    // Load config on page load
+    async function loadConfig() {
+        try {
+            const resp = await fetch("/api/config");
+            const data = await resp.json();
+            
+            if (data.exists && data.config) {
+                cfgRcloneRemote.value = data.config.RCLONE_REMOTE || "";
+                cfgLocalDir.value = data.config.LOCAL_DIR || "";
+                cfgLogDir.value = data.config.LOG_DIR || "";
+                cfgAppRoot.value = data.config.APP_ROOT || "";
+                cfgHostname.value = data.config.ALLOWED_HOST || "";
+            }
+            
+            await loadSources(data.config?.ACTIVE_SOURCE);
+        } catch (err) {
+            console.error("Failed to load config:", err);
+        }
+    }
+
+    // Load sources into dropdown
+    async function loadSources(activeSource) {
+        try {
+            const resp = await fetch("/api/sources");
+            const data = await resp.json();
+            
+            cfgSource.innerHTML = "";
+            if (data.sources && data.sources.length > 0) {
+                data.sources.forEach(src => {
+                    const opt = document.createElement("option");
+                    opt.value = src.id;
+                    opt.textContent = src.label + (src.enabled ? "" : " (disabled)");
+                    opt.disabled = !src.enabled;
+                    if (src.id === activeSource || src.active) {
+                        opt.selected = true;
+                    }
+                    cfgSource.appendChild(opt);
+                });
+            } else {
+                cfgSource.innerHTML = '<option value="">No sources configured</option>';
+            }
+        } catch (err) {
+            cfgSource.innerHTML = '<option value="">Error loading sources</option>';
+        }
+    }
+
+    // Save config
+    btnSaveConfig.addEventListener("click", async () => {
+        btnSaveConfig.disabled = true;
+        btnSaveConfig.textContent = "Saving...";
+        
+        const payload = {
+            RCLONE_REMOTE: cfgRcloneRemote.value,
+            LOCAL_DIR: cfgLocalDir.value,
+            LOG_DIR: cfgLogDir.value,
+            APP_ROOT: cfgAppRoot.value,
+            ALLOWED_HOST: cfgHostname.value,
+            ACTIVE_SOURCE: cfgSource.value,
+        };
+        
+        try {
+            const resp = await fetch("/api/config", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            const data = await resp.json();
+            
+            if (data.ok) {
+                showSettingsStatus("success", "Settings saved successfully!");
+                // If source changed, trigger source switch
+                if (cfgSource.value) {
+                    await switchSource(cfgSource.value);
+                }
+            } else {
+                showSettingsStatus("error", (data.errors || []).join(", ") || "Failed to save");
+            }
+        } catch (err) {
+            showSettingsStatus("error", "Failed to save: " + err);
+        } finally {
+            btnSaveConfig.disabled = false;
+            btnSaveConfig.textContent = "Save Settings";
+        }
+    });
+
+    // Test remote connection
+    btnTestRemote.addEventListener("click", async () => {
+        btnTestRemote.disabled = true;
+        btnTestRemote.textContent = "Testing...";
+        
+        try {
+            const resp = await fetch("/api/config/test-remote", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ remote: cfgRcloneRemote.value })
+            });
+            const data = await resp.json();
+            
+            if (data.ok) {
+                showSettingsStatus("success", "Connected! Found " + data.file_count + " files.");
+            } else {
+                showSettingsStatus("error", "Connection failed: " + data.error);
+            }
+        } catch (err) {
+            showSettingsStatus("error", "Test failed: " + err);
+        } finally {
+            btnTestRemote.disabled = false;
+            btnTestRemote.textContent = "Test Connection";
+        }
+    });
+
+    // Export config
+    btnExportConfig.addEventListener("click", () => {
+        window.location.href = "/api/config/export";
+    });
+
+    // Switch source
+    async function switchSource(sourceId) {
+        try {
+            await fetch("/api/sources/active", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ source_id: sourceId })
+            });
+        } catch (err) {
+            console.error("Failed to switch source:", err);
+        }
+    }
+
+    // Show status message
+    function showSettingsStatus(type, message) {
+        settingsStatus.className = "settings-status " + type;
+        settingsStatus.textContent = message;
+        settingsStatus.style.display = "block";
+        setTimeout(() => {
+            settingsStatus.style.display = "none";
+        }, 5000);
+    }
+
+    // Load config on page load
+    loadConfig();
+
+    // ============ SETUP WIZARD ============
+
+    let wizardStep = 1;
+    const wizardOverlay = document.getElementById("setup-wizard-overlay");
+    const wizStep1 = document.getElementById("wizard-step-1");
+    const wizStep2 = document.getElementById("wizard-step-2");
+    const wizStep3 = document.getElementById("wizard-step-3");
+    const wizBack = document.getElementById("wiz-back");
+    const wizNext = document.getElementById("wiz-next");
+    const wizFinish = document.getElementById("wiz-finish");
+    const wizRemote = document.getElementById("wiz-remote");
+    const wizLocalDir = document.getElementById("wiz-local-dir");
+    const wizTestBtn = document.getElementById("wiz-test");
+    const wizTestStatus = document.getElementById("wiz-test-status");
+
+    // Check if first run (no config exists)
+    async function checkFirstRun() {
+        try {
+            const resp = await fetch("/api/config");
+            const data = await resp.json();
+            if (!data.exists) {
+                wizardOverlay.style.display = "flex";
+            }
+        } catch (err) {
+            console.error("Error checking config:", err);
+        }
+    }
+
+    // Navigate wizard steps
+    wizNext.addEventListener("click", () => {
+        if (wizardStep === 1) {
+            wizStep1.style.display = "none";
+            wizStep2.style.display = "block";
+            wizBack.style.display = "inline-flex";
+            wizardStep = 2;
+        } else if (wizardStep === 2) {
+            wizStep2.style.display = "none";
+            wizStep3.style.display = "block";
+            wizNext.style.display = "none";
+            wizFinish.style.display = "inline-flex";
+            document.getElementById("wiz-confirm-remote").textContent = wizRemote.value || "--";
+            document.getElementById("wiz-confirm-local").textContent = wizLocalDir.value || "--";
+            wizardStep = 3;
+        }
+    });
+
+    wizBack.addEventListener("click", () => {
+        if (wizardStep === 2) {
+            wizStep2.style.display = "none";
+            wizStep1.style.display = "block";
+            wizBack.style.display = "none";
+            wizardStep = 1;
+        } else if (wizardStep === 3) {
+            wizStep3.style.display = "none";
+            wizStep2.style.display = "block";
+            wizNext.style.display = "inline-flex";
+            wizFinish.style.display = "none";
+            wizardStep = 2;
+        }
+    });
+
+    // Test connection in wizard
+    wizTestBtn.addEventListener("click", async () => {
+        wizTestBtn.disabled = true;
+        wizTestBtn.textContent = "Testing...";
+        wizTestStatus.style.display = "none";
+        
+        try {
+            const resp = await fetch("/api/config/test-remote", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ remote: wizRemote.value })
+            });
+            const data = await resp.json();
+            
+            wizTestStatus.style.display = "block";
+            if (data.ok) {
+                wizTestStatus.className = "wizard-test-status settings-status success";
+                wizTestStatus.textContent = "Connected! Found " + data.file_count + " files.";
+            } else {
+                wizTestStatus.className = "wizard-test-status settings-status error";
+                wizTestStatus.textContent = "Failed: " + data.error;
+            }
+        } catch (err) {
+            wizTestStatus.style.display = "block";
+            wizTestStatus.className = "wizard-test-status settings-status error";
+            wizTestStatus.textContent = "Error: " + err;
+        } finally {
+            wizTestBtn.disabled = false;
+            wizTestBtn.textContent = "Test Connection";
+        }
+    });
+
+    // Finish wizard and save config
+    wizFinish.addEventListener("click", async () => {
+        wizFinish.disabled = true;
+        wizFinish.textContent = "Saving...";
+        
+        const payload = {
+            RCLONE_REMOTE: wizRemote.value,
+            LOCAL_DIR: wizLocalDir.value,
+            LOG_DIR: "/home/pi/logs",
+            APP_ROOT: "/home/pi/picframe_3.0",
+        };
+        
+        try {
+            const resp = await fetch("/api/config", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            const data = await resp.json();
+            
+            if (data.ok) {
+                wizardOverlay.style.display = "none";
+                loadConfig();
+                refreshStatus();
+                showSettingsStatus("success", "Setup complete! Configuration saved.");
+            } else {
+                alert("Failed to save: " + (data.errors || []).join(", "));
+            }
+        } catch (err) {
+            alert("Error: " + err);
+        } finally {
+            wizFinish.disabled = false;
+            wizFinish.textContent = "Finish Setup";
+        }
+    });
+
+    // Check on page load
+    checkFirstRun();
 </script>
 </body>
 </html>
