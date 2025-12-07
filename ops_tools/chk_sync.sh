@@ -37,6 +37,9 @@ fi
 FRAME_LIVE="${FRAME_LIVE_PATH:-/home/pi/Pictures/frame_live}"
 STATUS_SCRIPT="$SCRIPT_DIR/chk_status.sh"
 
+# Save the global RCLONE_REMOTE from config as fallback for sources without their own remote
+GLOBAL_RCLONE_REMOTE="${RCLONE_REMOTE:-}"
+
 # These will be set by detect_active_source()
 RCLONE_REMOTE=""
 LOCAL_DIR=""
@@ -71,21 +74,23 @@ detect_active_source() {
                 ACTIVE_SOURCE_ID="$sid"
                 ACTIVE_SOURCE_LABEL="$sid - $label"
                 LOCAL_DIR="$path"
-                # Use remote from config if available (5th field), otherwise use global RCLONE_REMOTE
+                # Use remote from source config (5th field) if available,
+                # otherwise fall back to global RCLONE_REMOTE from user config
                 if [[ -n "${remote:-}" ]]; then
                     RCLONE_REMOTE="$remote"
                 else
-                    RCLONE_REMOTE="${RCLONE_REMOTE:-}"
+                    RCLONE_REMOTE="$GLOBAL_RCLONE_REMOTE"
                 fi
                 return 0
             fi
         done < "$conf_file"
     fi
 
-    # No match found in config
+    # No match found in config - use global remote as fallback
     ACTIVE_SOURCE_ID="unknown"
     ACTIVE_SOURCE_LABEL="unknown source backing: $target"
     LOCAL_DIR="$target"
+    RCLONE_REMOTE="$GLOBAL_RCLONE_REMOTE"
     return 1
 }
 
