@@ -78,6 +78,7 @@ picframe_3.0/
 │ └── dashboard.html – Dashboard UI with settings panel
 │
 ├── ops_tools/
+│ ├── migrate.sh – Migrate from legacy flat installation to git structure
 │ ├── frame_sync.sh – Main sync script with SAFE_MODE
 │ ├── chk_status.sh – Parses log for last sync / restart / download
 │ ├── chk_sync.sh – Source-aware count checker
