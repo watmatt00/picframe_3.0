@@ -29,6 +29,32 @@ wget https://raw.githubusercontent.com/watmatt00/picframe_3.0/main/ops_tools/mig
 
 ## Code Changes
 
+### 0. Fixed: `detect_state()` Logic (CRITICAL BUG FIX)
+**Location:** Lines 36-61
+
+**Problem:** 
+State detection incorrectly identified "complete" when:
+- Legacy files still exist
+- Repo manually cloned
+- No migration cache yet
+
+This caused the script to think migration was complete when it hadn't even started!
+
+**Fix:**
+```bash
+# State 1: Legacy (NOW checks for legacy files regardless of repo)
+if [[ -f "$LEGACY_SYNC_SCRIPT" ]] && [[ ! -d "$MIGRATION_CACHE" ]]; then
+    echo "legacy"
+fi
+
+# State 3: Complete (NOW requires legacy files to be gone)
+if [[ -d "$NEW_APP_ROOT/.git" ]] && [[ ! -d "$MIGRATION_CACHE" ]] && [[ ! -f "$LEGACY_SYNC_SCRIPT" ]]; then
+    echo "complete"
+fi
+```
+
+**Result:** Properly handles manual git clone before running migration!
+
 ### 1. New Function: `check_or_clone_repo()`
 **Location:** After `check_legacy_exists()` function
 

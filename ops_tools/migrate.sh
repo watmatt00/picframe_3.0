@@ -35,7 +35,9 @@ REPO_URL="https://github.com/watmatt00/picframe_3.0"
 
 detect_state() {
     # State 1: Legacy installation (not migrated yet)
-    if [[ -f "$LEGACY_SYNC_SCRIPT" ]] && [[ ! -d "$NEW_APP_ROOT/.git" ]]; then
+    # Check for legacy files first, regardless of repo state
+    # This handles both: manual clone before migration, and no clone yet
+    if [[ -f "$LEGACY_SYNC_SCRIPT" ]] && [[ ! -d "$MIGRATION_CACHE" ]]; then
         echo "legacy"
         return 0
     fi
@@ -47,7 +49,8 @@ detect_state() {
     fi
     
     # State 3: Already migrated and cleaned
-    if [[ -d "$NEW_APP_ROOT/.git" ]] && [[ ! -d "$MIGRATION_CACHE" ]]; then
+    # Must have repo, no cache, AND no legacy files
+    if [[ -d "$NEW_APP_ROOT/.git" ]] && [[ ! -d "$MIGRATION_CACHE" ]] && [[ ! -f "$LEGACY_SYNC_SCRIPT" ]]; then
         echo "complete"
         return 0
     fi
@@ -70,6 +73,10 @@ show_status() {
             echo "Status: LEGACY INSTALLATION"
             echo "  → Migration has not started"
             echo ""
+            if [[ -d "$NEW_APP_ROOT/.git" ]]; then
+                echo "  ✓ Repository already cloned (manual setup detected)"
+                echo ""
+            fi
             echo "Next step: Run ./migrate.sh to begin migration"
             ;;
         testing)
