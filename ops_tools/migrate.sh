@@ -496,13 +496,14 @@ setup_flask_service() {
     echo ""
     echo "Setting up Flask web dashboard service..."
     
-    # 1. Verify Python3
-    local python_path="/usr/bin/python3"
-    if [[ ! -x "$python_path" ]]; then
-        echo "ERROR: python3 not found at $python_path"
+    # 1. Verify Python3 and find its location
+    local python_path=$(command -v python3 || true)
+    if [[ -z "$python_path" ]] || [[ ! -x "$python_path" ]]; then
+        echo "ERROR: python3 not found in PATH"
+        echo "Please install Python 3: sudo apt-get install python3"
         exit 1
     fi
-    echo "  Using Python: $python_path"
+    echo "  Using Python: $python_path ($(python3 --version))"
     
     # 2. Install Flask via apt (matching working Pi)
     if python3 -c "import flask" 2>/dev/null; then

@@ -20,7 +20,11 @@ First-Time Setup (Recommended)
 3. Open the dashboard in a browser:
    http://<your-pi-ip>:5050
 
-4. Complete the setup wizard that appears automatically on first run
+4. Complete the setup wizard that appears automatically on first run:
+   - Configure your rclone remote
+   - Set local directory path
+   - Choose active photo source
+   - Test connection before saving
 
 Manual Configuration (Alternative)
 
@@ -46,9 +50,25 @@ Configuration Options
 | ALLOWED_USER | No | Username for safety checks (default: pi) |
 | ACTIVE_SOURCE | No | Active source ID from frame_sources.conf |
 | FRAME_LIVE_PATH | No | Symlink path (default: /home/pi/Pictures/frame_live) |
+| FRAME_SOURCES_CONF | No | Path to sources config (default: APP_ROOT/config/frame_sources.conf) |
 
 The web dashboard also provides a Settings panel where you can update these
 values, test your rclone connection, switch photo sources, and export your config.
+
+Photo Sources Configuration
+
+PicFrame supports multiple photo sources defined in `config/frame_sources.conf`.
+
+Format: `id|label|absolute_path|enabled|rclone_remote`
+
+Example:
+gdt|Google Drive|/home/pi/Pictures/gdt_frame|1|gdrive:photos
+kfr|Koofr|/home/pi/Pictures/kfr_frame|1|koofr:kframe
+
+• Add unlimited sources without code changes
+• Toggle enabled/disabled per source
+• Override global RCLONE_REMOTE per source (optional)
+• Switch sources via CLI or web dashboard
 
 📁 Project Structure
 
@@ -71,13 +91,19 @@ picframe_3.0/
 │ └── config_loader.sh – Shared config loading for all scripts
 │
 ├── web_status/
-│ ├── app.py – Flask backend with config API
+│ ├── app.py – Flask backend with API endpoints
 │ ├── status_backend.py – Status and sync checking logic
 │ ├── config_manager.py – Configuration read/write module
+│ ├── static/
+│ │ ├── css/
+│ │ │ └── dashboard.css – Dashboard styling
+│ │ └── js/
+│ │   └── dashboard.js – Dashboard interactivity
 │ └── templates/
-│ └── dashboard.html – Dashboard UI with settings panel
+│   └── dashboard.html – Dashboard UI with settings panel
 │
 ├── ops_tools/
+│ ├── archive/ – Backed up production scripts
 │ ├── migrate.sh – Migrate from legacy flat installation to git structure
 │ ├── frame_sync.sh – Main sync script with SAFE_MODE
 │ ├── chk_status.sh – Parses log for last sync / restart / download
@@ -89,6 +115,8 @@ picframe_3.0/
 │ ├── promote_to_prod.sh – Promote test scripts to production
 │ └── update_app.sh – Pull GitHub updates & restart services
 │
+├── CONTRIBUTING.md – Contributor guidelines and standards
+├── tasklist.md – Project task tracking and priorities
 └── README.md
 
 🛠️ Common Commands
@@ -116,6 +144,15 @@ bash ~/picframe_3.0/ops_tools/frame_sync.sh
 
 Validate configuration:
 bash ~/picframe_3.0/ops_tools/validate_config.sh
+
+List available photo sources:
+bash ~/picframe_3.0/ops_tools/pf_source_ctl.sh list
+
+Show current active source:
+bash ~/picframe_3.0/ops_tools/pf_source_ctl.sh current
+
+Switch photo source:
+bash ~/picframe_3.0/ops_tools/pf_source_ctl.sh set <source_id>
 
 Update from GitHub (Pi only):
 bash ~/picframe_3.0/ops_tools/update_app.sh
@@ -180,10 +217,20 @@ http://kframe.local:5050
 
 Dashboard architecture:
 
-• app.py – Backend API
-• dashboard.html – Full UI
-• /api/status – JSON for all displayed data
-• /api/run-check – Executes chk_sync.sh --d on demand
+The dashboard uses separate CSS and JS files for better maintainability:
+• static/css/dashboard.css – Modern dark theme styling
+• static/js/dashboard.js – Interactive features and API calls
+
+Dashboard API endpoints:
+
+• /api/status – JSON status for all displayed data
+• /api/run-check – Execute chk_sync.sh --d on demand
+• /api/config (GET) – Retrieve current configuration
+• /api/config (POST) – Save configuration changes
+• /api/config/test-remote – Test rclone remote connectivity
+• /api/config/export – Download config file as backup
+• /api/sources – List available photo sources
+• /api/sources/active – Switch active photo source
 
 Dashboard sections:
 
@@ -213,7 +260,20 @@ Dashboard sections:
 • Log tail (show/hide)
 • Run chk_sync.sh --d with full output
 
-These reflect the newest JS/HTML updates.
+✔ Settings Panel
+
+• Configuration editor with validation
+• Test rclone connection before saving
+• Export config as backup file
+• Live validation feedback
+• Secure config file management
+
+✔ Source Switcher
+
+• Toggle between photo sources (Google Drive, Koofr, etc.)
+• View enabled sources from frame_sources.conf
+• Switch sources with single click
+• Automatic service restart after switch
 
 🧱 frame_sync_cron.sh
 
@@ -261,6 +321,17 @@ Tasks:
 
 This is the only supported update mechanism on the Pi.
 
+🤝 Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for:
+• Security guidelines and best practices
+• Code quality standards
+• Testing requirements
+• Development workflow
+• Pull request process
+
+Priority areas: Authentication, HTTPS/TLS, input validation, atomic file writes
+
 📝 Notes
 
 Logs are stored in:
@@ -277,14 +348,5 @@ sudo chmod 600 ~/.config/rclone/rclone.conf
 git sync
 git quick
 git commit
-
-📌 Dashboard Updates (2025-11-29)
-
-• Dashboard moved fully into dashboard.html template
-• Service restart now shows timestamp only
-• Last file download now shows timestamp only
-• Live log tail viewer added
-• chk_sync.sh --d button runs interactively
-• Counts fully source-aware (Google/Koofr)
 
 © 2025 Matt P. – PicFrame 3.0 Project
