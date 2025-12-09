@@ -3,12 +3,22 @@
 # migrate.sh - PicFrame 3.0 Migration Tool
 # Migrates legacy flat installations to git-managed structure
 #
+# Recommended Workflow:
+#   1. ssh to your Raspberry Pi
+#   2. git clone https://github.com/watmatt00/picframe_3.0.git
+#   3. cd picframe_3.0/ops_tools
+#   4. ./migrate.sh              (runs Phase 1 - prep)
+#   5. Test new installation
+#   6. ./migrate.sh              (runs Phase 2 - cleanup)
+#
 # Usage:
 #   ./migrate.sh              Auto-detect state and run next phase
 #   ./migrate.sh --status     Show current migration state
 #   ./migrate.sh --force-prep Force run preparation phase
 #   ./migrate.sh --force-cleanup Force run cleanup phase
 #   ./migrate.sh --help       Show usage information
+#
+# Note: Script supports both manual git clone (recommended) and automatic clone
 #
 
 set -euo pipefail
@@ -104,8 +114,7 @@ run_prep_phase() {
     check_legacy_exists
     extract_legacy_config
     verify_rclone_config
-    ensure_git_installed
-    setup_git_and_clone_repo
+    check_or_clone_repo
     generate_new_config_files
     setup_flask_service
     set_proper_permissions
@@ -162,17 +171,37 @@ check_legacy_exists() {
         exit 1
     fi
     
+    echo "✓ Detected legacy installation at $LEGACY_SYNC_SCRIPT"
+}
+
+check_or_clone_repo() {
+    echo ""
+    
+    # Check if repository already exists
     if [[ -d "$NEW_APP_ROOT/.git" ]]; then
-        echo "ERROR: picframe_3.0 repo already exists at $NEW_APP_ROOT"
-        echo ""
-        echo "If you need to re-migrate, remove it first:"
-        echo "  rm -rf $NEW_APP_ROOT"
-        echo ""
-        echo "Or use --force-prep to override."
-        exit 1
+        echo "✓ Repository already exists at $NEW_APP_ROOT"
+        echo "  Skipping git clone (assuming manual installation)"
+        
+        # Verify it's actually the picframe_3.0 repo
+        if [[ -f "$NEW_APP_ROOT/ops_tools/migrate.sh" ]]; then
+            echo "✓ Repository structure verified"
+        else
+            echo "ERROR: Directory exists but doesn't appear to be picframe_3.0"
+            echo "  Missing: $NEW_APP_ROOT/ops_tools/migrate.sh"
+            echo ""
+            echo "Please remove and re-clone:"
+            echo "  rm -rf $NEW_APP_ROOT"
+            echo "  git clone $REPO_URL"
+            exit 1
+        fi
+        
+        return 0
     fi
     
-    echo "✓ Detected legacy installation at $LEGACY_SYNC_SCRIPT"
+    # Repository doesn't exist, need to clone it
+    echo "Repository not found. Will clone from GitHub..."
+    ensure_git_installed
+    setup_git_and_clone_repo
 }
 
 extract_legacy_config() {
@@ -843,6 +872,14 @@ main() {
             echo "PicFrame 3.0 Migration Tool"
             echo "Migrates legacy flat installations to git-managed structure"
             echo ""
+            echo "Recommended Workflow:"
+            echo "  1. ssh pi@your-raspberry-pi"
+            echo "  2. git clone https://github.com/watmatt00/picframe_3.0.git"
+            echo "  3. cd picframe_3.0/ops_tools"
+            echo "  4. ./migrate.sh              # Phase 1: Prep"
+            echo "  5. Test new installation (test sync, web dashboard, etc.)"
+            echo "  6. ./migrate.sh              # Phase 2: Cleanup"
+            echo ""
             echo "Options:"
             echo "  (none)            Auto-detect state and run next phase"
             echo "  --status          Show current migration state"
@@ -850,10 +887,10 @@ main() {
             echo "  --force-cleanup   Force run cleanup phase"
             echo "  --help, -h        Show this help"
             echo ""
-            echo "Migration Flow:"
-            echo "  1. Run script on legacy system (Phase 1: Prep)"
-            echo "  2. Test new installation"
-            echo "  3. Run script again (Phase 2: Cleanup)"
+            echo "Notes:"
+            echo "  - Script works whether you clone the repo manually or let it clone"
+            echo "  - Manual clone is recommended (more transparent, easier to review)"
+            echo "  - Legacy files are preserved until Phase 2 (safe rollback)"
             echo ""
             echo "For more information, see: $NEW_APP_ROOT/README.md"
             exit 0
