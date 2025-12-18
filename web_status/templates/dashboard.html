@@ -174,24 +174,6 @@
             background: rgba(234, 179, 8, 0.12);
             border-color: rgba(250, 204, 21, 0.6);
         }
-        .K {
-            border-radius: 0.4rem;
-            background: radial-gradient(circle at top left, rgba(148, 163, 184, 0.16), rgba(15, 23, 42, 0.96));
-            padding: 0.8rem 1.1rem;
-            font-size: 0.78rem;
-            text-transform: uppercase;
-            letter-spacing: 0.17em;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.45rem;
-        }
-        .K-dot {
-            width: 0.55rem;
-            height: 0.55rem;
-            border-radius: 999px;
-            background: #22c55e;
-            box-shadow: 0 0 6px rgba(34, 197, 94, 0.7);
-        }
         .count-row {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -546,10 +528,6 @@
                         <span id="overall-title">Status unknown</span>
                         <span class="status-chip" id="overall-chip">--</span>
                     </div>
-                    <div class="K">
-                        <span class="K-dot"></span>
-                        <span id="k-status-text">status · unknown</span>
-                    </div>
                 </div>
                 <div class="overall-inner">
                     <div class="traffic-rail">
@@ -766,7 +744,6 @@
 
     const overallTitle = document.getElementById("overall-title");
     const overallChip = document.getElementById("overall-chip");
-    const kStatusText = document.getElementById("k-status-text");
 
     const trafficGreen = document.getElementById("traffic-green");
     const trafficAmber = document.getElementById("traffic-amber");
@@ -863,7 +840,6 @@
             } else if (severity.toUpperCase() === "WARN") {
                 overallChip.classList.add("warn");
             }
-            kStatusText.textContent = "status · " + severity.toLowerCase();
             bannerText.textContent = statusText;
 
             setTrafficLights(severity);
