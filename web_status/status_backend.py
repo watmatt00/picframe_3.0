@@ -124,10 +124,11 @@ def run_quick_check():
 
         # Quick check line
         if "quick check" in lower:
-            if "match" in lower:
-                quick_status = "match"
-            elif "differ" in lower:
+            # Check mismatch/differ BEFORE match to avoid substring match
+            if "mismatch" in lower or "differ" in lower:
                 quick_status = "differ"
+            elif "file counts match" in lower or "match" in lower:
+                quick_status = "match"
             elif "error" in lower or "failed" in lower:
                 quick_status = "error"
 
