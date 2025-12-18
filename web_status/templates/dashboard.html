@@ -128,15 +128,29 @@
             width: 26px;
             height: 26px;
             border-radius: 999px;
-            background: radial-gradient(circle at 30% 20%, #22c55e, #16a34a 60%, #14532d);
-            box-shadow:
-                0 0 15px rgba(34, 197, 94, 0.7),
-                inset 0 0 0 1px rgba(22, 163, 74, 0.9);
         }
         .traffic-light.off {
             background: radial-gradient(circle at 30% 20%, #0f172a, #020617 60%, #000);
             box-shadow:
                 inset 0 0 0 1px rgba(15, 23, 42, 0.8);
+        }
+        #traffic-green:not(.off) {
+            background: radial-gradient(circle at 30% 20%, #22c55e, #16a34a 60%, #14532d);
+            box-shadow:
+                0 0 15px rgba(34, 197, 94, 0.7),
+                inset 0 0 0 1px rgba(22, 163, 74, 0.9);
+        }
+        #traffic-amber:not(.off) {
+            background: radial-gradient(circle at 30% 20%, #fbbf24, #f59e0b 60%, #78350f);
+            box-shadow:
+                0 0 15px rgba(251, 191, 36, 0.7),
+                inset 0 0 0 1px rgba(245, 158, 11, 0.9);
+        }
+        #traffic-red:not(.off) {
+            background: radial-gradient(circle at 30% 20%, #ef4444, #dc2626 60%, #7f1d1d);
+            box-shadow:
+                0 0 15px rgba(239, 68, 68, 0.7),
+                inset 0 0 0 1px rgba(220, 38, 38, 0.9);
         }
         .status-label {
             font-size: 1.2rem;
