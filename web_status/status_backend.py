@@ -535,3 +535,86 @@ def get_sources_from_conf():
         pass
     
     return sources
+
+
+def validate_source_data(source_id, label, path, rclone_remote):
+    """
+    Validate source data before adding to frame_sources.conf.
+    
+    Returns: (is_valid, error_message)
+    """
+    # Validate source_id
+    if not source_id or not source_id.strip():
+        return False, "Source ID is required"
+    
+    if not source_id.replace("_", "").replace("-", "").isalnum():
+        return False, "Source ID must contain only letters, numbers, hyphens, and underscores"
+    
+    # Check if source_id already exists
+    sources = get_sources_from_conf()
+    if any(s["id"] == source_id for s in sources):
+        return False, f"Source ID '{source_id}' already exists"
+    
+    # Validate label
+    if not label or not label.strip():
+        return False, "Label is required"
+    
+    # Validate path
+    if not path or not path.strip():
+        return False, "Local path is required"
+    
+    if not path.startswith("/"):
+        return False, "Local path must be an absolute path"
+    
+    # Validate rclone_remote
+    if not rclone_remote or not rclone_remote.strip():
+        return False, "Rclone remote is required"
+    
+    if ":" not in rclone_remote:
+        return False, "Rclone remote must include ':' (e.g., remote:path)"
+    
+    return True, None
+
+
+def add_source_to_conf(source_id, label, path, enabled, rclone_remote):
+    """
+    Add a new source to frame_sources.conf.
+    
+    Args:
+        source_id: Short identifier (e.g., "mycloud")
+        label: Human-friendly name (e.g., "My Cloud Photos")
+        path: Local directory path (e.g., "/home/pi/Pictures/mycloud_frame")
+        enabled: 1 for enabled, 0 for disabled
+        rclone_remote: Rclone remote and path (e.g., "mydrive:photos")
+    
+    Returns: (success, error_message)
+    """
+    # Validate first
+    is_valid, error = validate_source_data(source_id, label, path, rclone_remote)
+    if not is_valid:
+        return False, error
+    
+    paths = _get_paths()
+    conf_path = paths["frame_sources_conf"]
+    
+    if not conf_path.exists():
+        return False, f"Config file not found: {conf_path}"
+    
+    try:
+        # Create backup
+        backup_path = conf_path.with_suffix(".conf.backup")
+        import shutil
+        shutil.copy2(conf_path, backup_path)
+        
+        # Format new source line
+        enabled_str = "1" if enabled else "0"
+        new_line = f"{source_id}|{label}|{path}|{enabled_str}|{rclone_remote}\n"
+        
+        # Append to file
+        with conf_path.open("a", encoding="utf-8") as f:
+            f.write(new_line)
+        
+        return True, None
+        
+    except Exception as e:
+        return False, f"Failed to write to config: {str(e)}"

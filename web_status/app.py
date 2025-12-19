@@ -14,6 +14,8 @@ from status_backend import (
     get_status_payload,
     run_chk_sync_detailed,
     get_sources_from_conf,
+    add_source_to_conf,
+    validate_source_data,
     _get_paths,
 )
 
@@ -40,6 +42,19 @@ def dashboard():
     paths = _get_paths()
     return render_template(
         "dashboard.html",
+        host_name=host_name,
+        script_path=str(paths["chk_script"]),
+        log_path=str(paths["log_file"]),
+    )
+
+
+@app.route("/sources")
+def sources_page():
+    """Render the sources management page (development)."""
+    host_name = socket.gethostname().upper()
+    paths = _get_paths()
+    return render_template(
+        "sources.html",
         host_name=host_name,
         script_path=str(paths["chk_script"]),
         log_path=str(paths["log_file"]),
@@ -258,6 +273,176 @@ def api_set_active_source():
         return jsonify({"ok": False, "output": "Command timed out"})
     except Exception as e:
         return jsonify({"ok": False, "output": str(e)})
+
+
+# ---------------------------------------------------------------------------
+# Rclone and Directory Management API Routes
+# ---------------------------------------------------------------------------
+
+@app.route("/api/rclone/remotes")
+def api_get_rclone_remotes():
+    """
+    List configured rclone remotes.
+    
+    Response:
+        {"ok": true, "remotes": ["kfgdrive:", "kfrphotos:"]} or {"ok": false, "error": "..."}
+    """
+    env = os.environ.copy()
+    env.setdefault("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
+    
+    try:
+        result = subprocess.run(
+            ["rclone", "listremotes"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            env=env,
+        )
+        
+        if result.returncode != 0:
+            error_msg = result.stderr.strip() or "Failed to list remotes"
+            return jsonify({"ok": False, "error": error_msg}), 500
+        
+        # Parse output - each line is a remote name ending with ":"
+        remotes = [line.strip() for line in result.stdout.strip().splitlines() if line.strip()]
+        return jsonify({"ok": True, "remotes": remotes})
+        
+    except subprocess.TimeoutExpired:
+        return jsonify({"ok": False, "error": "Command timed out"}), 500
+    except FileNotFoundError:
+        return jsonify({"ok": False, "error": "rclone not found - is it installed?"}), 500
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/rclone/list-dirs", methods=["POST"])
+def api_list_remote_dirs():
+    """
+    List directories at remote path.
+    
+    Request body: {"remote": "kfgdrive:", "path": "dframe"}
+    
+    Response:
+        {"ok": true, "dirs": ["2024", "2023"]} or {"ok": false, "error": "..."}
+    """
+    data = request.json or {}
+    remote = data.get("remote", "").strip()
+    path = data.get("path", "").strip()
+    
+    if not remote:
+        return jsonify({"ok": False, "error": "No remote specified"}), 400
+    
+    # Build full remote path
+    if path:
+        full_path = f"{remote}{path}"
+    else:
+        full_path = remote
+    
+    env = os.environ.copy()
+    env.setdefault("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
+    
+    try:
+        result = subprocess.run(
+            ["rclone", "lsd", full_path],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            env=env,
+        )
+        
+        if result.returncode != 0:
+            error_msg = result.stderr.strip() or "Failed to list directories"
+            return jsonify({"ok": False, "error": error_msg}), 500
+        
+        # Parse output - rclone lsd format: "-1 2024-01-01 12:00:00        -1 dirname"
+        dirs = []
+        for line in result.stdout.strip().splitlines():
+            if line.strip():
+                # Extract directory name (last part after spaces)
+                parts = line.split()
+                if len(parts) >= 5:
+                    dir_name = parts[-1]
+                    dirs.append(dir_name)
+        
+        return jsonify({"ok": True, "dirs": dirs})
+        
+    except subprocess.TimeoutExpired:
+        return jsonify({"ok": False, "error": "Command timed out (30s)"}), 500
+    except FileNotFoundError:
+        return jsonify({"ok": False, "error": "rclone not found - is it installed?"}), 500
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/local/list-dirs")
+def api_list_local_dirs():
+    """
+    List directories in /home/pi/Pictures.
+    
+    Response:
+        {"ok": true, "dirs": ["gdt_frame", "kfr_frame"]} or {"ok": false, "error": "..."}
+    """
+    from pathlib import Path
+    
+    pictures_dir = Path.home() / "Pictures"
+    
+    try:
+        if not pictures_dir.exists():
+            return jsonify({"ok": False, "error": f"Pictures directory not found: {pictures_dir}"}), 404
+        
+        if not pictures_dir.is_dir():
+            return jsonify({"ok": False, "error": f"Not a directory: {pictures_dir}"}), 400
+        
+        # List all directories (excluding symlinks for clarity)
+        dirs = []
+        for item in sorted(pictures_dir.iterdir()):
+            if item.is_dir() and not item.is_symlink():
+                dirs.append(item.name)
+        
+        return jsonify({"ok": True, "dirs": dirs})
+        
+    except PermissionError:
+        return jsonify({"ok": False, "error": "Permission denied accessing Pictures directory"}), 403
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/sources/create", methods=["POST"])
+def api_create_source():
+    """
+    Create a new source in frame_sources.conf.
+    
+    Request body: {
+        "source_id": "mycloud",
+        "label": "My Cloud Photos",
+        "path": "/home/pi/Pictures/mycloud_frame",
+        "enabled": true,
+        "rclone_remote": "mydrive:photos"
+    }
+    
+    Response:
+        {"ok": true} or {"ok": false, "error": "..."}
+    """
+    data = request.json or {}
+    
+    source_id = data.get("source_id", "").strip()
+    label = data.get("label", "").strip()
+    path = data.get("path", "").strip()
+    enabled = data.get("enabled", True)
+    rclone_remote = data.get("rclone_remote", "").strip()
+    
+    # Validate
+    is_valid, error = validate_source_data(source_id, label, path, rclone_remote)
+    if not is_valid:
+        return jsonify({"ok": False, "error": error}), 400
+    
+    # Add to config
+    success, error = add_source_to_conf(source_id, label, path, enabled, rclone_remote)
+    
+    if success:
+        return jsonify({"ok": True})
+    else:
+        return jsonify({"ok": False, "error": error}), 500
 
 
 # ---------------------------------------------------------------------------

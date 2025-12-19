@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>PicFrame - Source Manager (DEV)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/static/css/sources.css">
+</head>
+<body>
+    <div class="page">
+        <!-- DEV Warning Banner -->
+        <div class="dev-warning-banner">
+            🚧 DEVELOPMENT VERSION - TESTING ONLY 🚧
+        </div>
+
+        <!-- Header -->
+        <header id="top-banner">
+            <div class="header-left">
+                <div class="page-title">PicFrame Source Manager</div>
+                <div class="page-subtitle">Manage photo sources and directories</div>
+            </div>
+            <div class="header-right">
+                <a href="/" class="btn-link">← Back to Dashboard</a>
+                <div class="host-pill">
+                    <span>Host</span>&nbsp; <strong id="host-name">{{ host_name }}</strong>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <!-- Existing Sources Section -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Existing Sources</div>
+                        <div class="card-subtitle">Currently configured photo sources</div>
+                    </div>
+                </div>
+                
+                <div id="sources-table-container">
+                    <table class="sources-table" id="sources-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Label</th>
+                                <th>Local Path</th>
+                                <th>Remote</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sources-tbody">
+                            <tr>
+                                <td colspan="5" class="loading-cell">Loading sources...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Add New Source Section -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Add New Source</div>
+                        <div class="card-subtitle">Create a new photo source with custom directories</div>
+                    </div>
+                </div>
+
+                <form id="add-source-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Source ID *</label>
+                            <input type="text" id="input-source-id" class="form-input"
+                                   placeholder="mycloud" required>
+                            <div class="form-hint">Short identifier (letters, numbers, hyphens, underscores only)</div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Label *</label>
+                            <input type="text" id="input-label" class="form-input"
+                                   placeholder="My Cloud Photos" required>
+                            <div class="form-hint">Human-friendly display name</div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Rclone Remote *</label>
+                            <select id="input-remote" class="form-select" required>
+                                <option value="">Loading remotes...</option>
+                            </select>
+                            <div class="form-hint">Select configured rclone remote</div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Remote Path</label>
+                        <div class="breadcrumb-container">
+                            <div class="breadcrumb" id="breadcrumb-path">
+                                <span class="breadcrumb-item root">Root</span>
+                            </div>
+                        </div>
+                        <div id="remote-dirs-container" class="dir-browser">
+                            <div class="dir-list" id="remote-dir-list">
+                                <div class="dir-item placeholder">Select a remote to browse directories</div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="input-remote-path" value="">
+                        <div class="form-hint">Click folders above to navigate, or leave empty for root</div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Local Directory *</label>
+                            <select id="input-local-dir" class="form-select" required>
+                                <option value="">Loading directories...</option>
+                            </select>
+                            <div class="form-hint">Directory under /home/pi/Pictures where photos will sync</div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Enable Source</label>
+                            <div class="checkbox-wrapper">
+                                <input type="checkbox" id="input-enabled" checked>
+                                <label for="input-enabled">Source is enabled and can be selected</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="button-row">
+                        <button type="button" class="btn" id="btn-test-connection">
+                            Test Connection
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="btn-save-source">
+                            Save New Source
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Status Message Area -->
+                <div id="status-message" class="status-message" style="display:none;"></div>
+            </section>
+        </main>
+
+        <footer>
+            Development version • Use for testing only • Path: {{ script_path }}
+        </footer>
+    </div>
+
+    <script src="/static/js/sources.js"></script>
+</body>
+</html>
