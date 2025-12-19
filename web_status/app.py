@@ -50,11 +50,11 @@ def dashboard():
 
 @app.route("/sources")
 def sources_page():
-    """Render the sources management page (development)."""
+    """Render the tabbed dashboard with Status + Sources Manager (test version)."""
     host_name = socket.gethostname().upper()
     paths = _get_paths()
     return render_template(
-        "sources.html",
+        "dashboard_tabbed.html",
         host_name=host_name,
         script_path=str(paths["chk_script"]),
         log_path=str(paths["log_file"]),

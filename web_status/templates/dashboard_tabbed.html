@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>PicFrame Dashboard (TEST)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/static/css/dashboard_tabbed.css">
+</head>
+<body>
+<div class="page">
+    <div class="dev-warning-banner">
+        🚧 TEST VERSION - Testing tabbed interface 🚧
+    </div>
+    <header id="top-banner">
+        <div class="status-text">
+            <span id="banner-text">Last sync status</span>
+            <span class="status-pill" id="banner-pill">--</span>
+        </div>
+        <div class="header-right">
+            <div id="banner-updated">Updated: --</div>
+            <div class="host-pill">
+                <span>Host</span>&nbsp; <strong id="host-name">{{ host_name }}</strong>
+            </div>
+        </div>
+    </header>
+
+    <!-- Tab Navigation -->
+    <div class="tab-bar">
+        <button class="tab-button active" data-tab="status">Status</button>
+        <button class="tab-button" data-tab="sources">Source Manager</button>
+    </div>
+
+    <!-- STATUS TAB CONTENT -->
+    <div id="tab-status" class="tab-content active">
+        <main>
+            <div class="card-header-top">
+                <div>
+                    <div class="card-title">PicFrame Sync Dashboard</div>
+                    <div class="meta-line">
+                        Script: {{ script_path }} · Log: {{ log_path }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="top-row">
+                <!-- Overall status card -->
+                <section class="card overall-card">
+                    <div class="card-header">
+                        <div class="status-label">
+                            <span id="overall-title">Status unknown</span>
+                            <span class="status-chip" id="overall-chip">--</span>
+                        </div>
+                    </div>
+                    <div class="overall-inner">
+                        <div class="traffic-rail">
+                            <div class="traffic-light" id="traffic-green"></div>
+                            <div class="traffic-light off" id="traffic-amber"></div>
+                            <div class="traffic-light off" id="traffic-red"></div>
+                        </div>
+                        <div>
+                            <div class="count-row">
+                                <div class="count-tile">
+                                    <div class="count-label">Remote count</div>
+                                    <div class="count-value" id="remote-count">--</div>
+                                </div>
+                                <div class="count-tile">
+                                    <div class="count-label">Local count</div>
+                                    <div class="count-value" id="local-count">--</div>
+                                </div>
+                            </div>
+
+                            <div class="service-grid">
+                                <div class="service-label">Web status service</div>
+                                <div class="service-value">
+                                    <span class="status-dot" id="web-status-dot"></span>
+                                    <span id="web-status-text">UNKNOWN</span>
+                                </div>
+
+                                <div class="service-label">Picframe service</div>
+                                <div class="service-value">
+                                    <span class="status-dot" id="pf-status-dot"></span>
+                                    <span id="pf-status-text">UNKNOWN</span>
+                                </div>
+
+                                <div class="service-label">Current remote</div>
+                                <div class="service-value remote-label" id="current-remote">--</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Activity & tools card -->
+                <section class="card tools-card">
+                    <div class="tools-card-header">
+                        <div>
+                            <div class="tools-title">Activity &amp; tools</div>
+                            <div class="tools-subtitle">Uses log; chk_sync.sh on demand</div>
+                        </div>
+                    </div>
+
+                    <div class="button-row">
+                        <button class="btn secondary" id="btn-refresh">
+                            <span id="btn-refresh-icon">⟳</span>
+                            <span>Refresh from log</span>
+                        </button>
+                        <button class="btn" id="btn-run-d">
+                            <div class="btn-spinner" id="btn-run-d-spinner" style="display:none;"></div>
+                            <span id="btn-run-d-label">Run chk_sync.sh --d</span>
+                        </button>
+                    </div>
+
+                    <div class="pill-stack-row">
+                        <div class="pill-block">
+                            <div class="pill-block-label">Last run</div>
+                            <div class="pill-block-value" id="last-run">--</div>
+                        </div>
+                        <div class="pill-block">
+                            <div class="pill-block-label">Last service restart</div>
+                            <div class="pill-block-value" id="last-restart">--</div>
+                        </div>
+                        <div class="pill-block">
+                            <div class="pill-block-label">Last file download</div>
+                            <div class="pill-block-value" id="last-download">--</div>
+                        </div>
+                    </div>
+
+                    <div class="log-section-header">
+                        <span>Log tail (from frame_sync.log)</span>
+                        <button class="log-toggle" id="log-toggle">Hide log ▾</button>
+                    </div>
+                    <div class="log-text" id="log-tail"></div>
+
+                    <div class="log-section-header" style="margin-top: 0.9rem;">
+                        <span>chk_sync.sh -d output</span>
+                    </div>
+                    <div class="log-text" id="chk-d-output">(not run yet)</div>
+                </section>
+            </div>
+
+            <!-- Settings Card -->
+            <section class="card settings-card" id="settings-card">
+                <div class="tools-card-header">
+                    <div>
+                        <div class="tools-title">Configuration</div>
+                        <div class="tools-subtitle">Sync settings for this device</div>
+                    </div>
+                    <button class="log-toggle" id="settings-toggle">Collapse</button>
+                </div>
+
+                <div id="settings-body">
+                    <div class="form-group">
+                        <label class="form-label">Photo Source</label>
+                        <select id="cfg-source" class="form-select">
+                            <option value="">Loading sources...</option>
+                        </select>
+                        <div class="form-hint">Select which photo source to sync from</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Rclone Remote</label>
+                        <input type="text" id="cfg-rclone-remote" class="form-input" 
+                               placeholder="mydrive:photos">
+                        <div class="form-hint">Format: remotename:path (run 'rclone config' to set up)</div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Local Photo Directory</label>
+                            <input type="text" id="cfg-local-dir" class="form-input"
+                                   placeholder="/home/pi/Pictures/frame">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Log Directory</label>
+                            <input type="text" id="cfg-log-dir" class="form-input"
+                                   placeholder="/home/pi/logs">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">App Root Directory</label>
+                            <input type="text" id="cfg-app-root" class="form-input"
+                                   placeholder="/home/pi/picframe_3.0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Device Hostname</label>
+                            <input type="text" id="cfg-hostname" class="form-input"
+                                   placeholder="(leave empty to disable check)">
+                            <div class="form-hint">Optional: restrict scripts to this host</div>
+                        </div>
+                    </div>
+
+                    <div class="button-row" style="margin-top: 1rem;">
+                        <button class="btn" id="btn-save-config">Save Settings</button>
+                        <button class="btn secondary" id="btn-test-remote">Test Connection</button>
+                        <button class="btn secondary" id="btn-export-config">Export Config</button>
+                    </div>
+
+                    <div id="settings-status" class="settings-status" style="display:none;"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- SOURCE MANAGER TAB CONTENT -->
+    <div id="tab-sources" class="tab-content">
+        <main>
+            <!-- Existing Sources Section -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Existing Sources</div>
+                        <div class="card-subtitle">Currently configured photo sources</div>
+                    </div>
+                </div>
+                
+                <div id="sources-table-container">
+                    <table class="sources-table" id="sources-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Label</th>
+                                <th>Local Path</th>
+                                <th>Remote</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sources-tbody">
+                            <tr>
+                                <td colspan="5" class="loading-cell">Loading sources...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Add New Source Section -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Add New Source</div>
+                        <div class="card-subtitle">Create a new photo source with custom directories</div>
+                    </div>
+                </div>
+
+                <form id="add-source-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Source ID *</label>
+                            <input type="text" id="input-source-id" class="form-input"
+                                   placeholder="mycloud" required>
+                            <div class="form-hint">Short identifier (letters, numbers, hyphens, underscores only)</div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Label *</label>
+                            <input type="text" id="input-label" class="form-input"
+                                   placeholder="My Cloud Photos" required>
+                            <div class="form-hint">Human-friendly display name</div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Rclone Remote *</label>
+                            <select id="input-remote" class="form-select" required>
+                                <option value="">Loading remotes...</option>
+                            </select>
+                            <div class="form-hint">Select configured rclone remote</div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Remote Path</label>
+                        <div class="breadcrumb-container">
+                            <div class="breadcrumb" id="breadcrumb-path">
+                                <span class="breadcrumb-item root">Root</span>
+                            </div>
+                        </div>
+                        <div id="remote-dirs-container" class="dir-browser">
+                            <div class="dir-list" id="remote-dir-list">
+                                <div class="dir-item placeholder">Select a remote to browse directories</div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="input-remote-path" value="">
+                        <div class="form-hint">Click folders above to navigate, or leave empty for root</div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Local Directory *</label>
+                            <select id="input-local-dir" class="form-select" required>
+                                <option value="">Loading directories...</option>
+                            </select>
+                            <div class="form-hint">Directory under /home/pi/Pictures where photos will sync</div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Enable Source</label>
+                            <div class="checkbox-wrapper">
+                                <input type="checkbox" id="input-enabled" checked>
+                                <label for="input-enabled">Source is enabled and can be selected</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="button-row">
+                        <button type="button" class="btn" id="btn-test-connection">
+                            Test Connection
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="btn-save-source">
+                            Save New Source
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Status Message Area -->
+                <div id="status-message" class="status-message" style="display:none;"></div>
+            </section>
+        </main>
+    </div>
+
+    <footer>
+        TEST VERSION with tabs · Auto-refreshes every 15 seconds
+    </footer>
+</div>
+
+<script src="/static/js/dashboard_tabbed.js"></script>
+</body>
+</html>
