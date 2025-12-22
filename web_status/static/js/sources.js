@@ -257,14 +257,18 @@ function onRemoteChange() {
  */
 function onLocalDirChange() {
     const selectedValue = elements.localDir.value;
+    console.log('Local dir changed to:', selectedValue);
+    console.log('newDirContainer element:', elements.newDirContainer);
 
     if (selectedValue === 'new') {
         // Show the new directory input field
+        console.log('Showing new dir input');
         elements.newDirContainer.style.display = 'block';
         elements.newDirName.required = true;
         elements.newDirName.focus();
     } else {
         // Hide the new directory input field
+        console.log('Hiding new dir input');
         elements.newDirContainer.style.display = 'none';
         elements.newDirName.required = false;
         elements.newDirName.value = '';
