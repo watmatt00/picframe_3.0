@@ -441,39 +441,57 @@ async function onTestConnection() {
  */
 async function onFormSubmit(event) {
     event.preventDefault();
-    
+
+    // Handle new directory creation
+    let localPath = elements.localDir.value;
+    let createDirectory = false;
+
+    if (localPath === 'new') {
+        const newDirName = elements.newDirName.value.trim();
+        if (!newDirName) {
+            showStatus('error', 'Please enter a directory name');
+            return;
+        }
+
+        // Validate directory name (alphanumeric, hyphens, underscores only)
+        if (!/^[a-zA-Z0-9_-]+$/.test(newDirName)) {
+            showStatus('error', 'Directory name must contain only letters, numbers, hyphens, and underscores');
+            return;
+        }
+
+        // Construct full path
+        localPath = `/home/pi/Pictures/${newDirName}`;
+        createDirectory = true;
+    }
+
     // Gather form data
     const formData = {
         source_id: elements.sourceId.value.trim(),
         label: elements.label.value.trim(),
         rclone_remote: buildFullRemotePath(),
-        path: elements.localDir.value,
-        enabled: elements.enabled.checked
+        path: localPath,
+        enabled: elements.enabled.checked,
+        create_directory: createDirectory
     };
-    
+
     // Validate
     if (!formData.source_id) {
         showStatus('error', 'Source ID is required');
         return;
     }
-    
+
     if (!formData.label) {
         showStatus('error', 'Label is required');
         return;
     }
-    
+
     if (!formData.rclone_remote) {
         showStatus('error', 'Please select a remote');
         return;
     }
-    
+
     if (!formData.path) {
-        showStatus('error', 'Please select a local directory');
-        return;
-    }
-    
-    if (formData.path === 'new') {
-        showStatus('error', 'Creating new directories is not yet implemented. Please create the directory manually first.');
+        showStatus('error', 'Please select or create a local directory');
         return;
     }
     

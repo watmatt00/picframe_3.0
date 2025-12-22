@@ -411,34 +411,36 @@ def api_list_local_dirs():
 def api_create_source():
     """
     Create a new source in frame_sources.conf.
-    
+
     Request body: {
         "source_id": "mycloud",
         "label": "My Cloud Photos",
         "path": "/home/pi/Pictures/mycloud_frame",
         "enabled": true,
-        "rclone_remote": "mydrive:photos"
+        "rclone_remote": "mydrive:photos",
+        "create_directory": false
     }
-    
+
     Response:
         {"ok": true} or {"ok": false, "error": "..."}
     """
     data = request.json or {}
-    
+
     source_id = data.get("source_id", "").strip()
     label = data.get("label", "").strip()
     path = data.get("path", "").strip()
     enabled = data.get("enabled", True)
     rclone_remote = data.get("rclone_remote", "").strip()
-    
+    create_directory = data.get("create_directory", False)
+
     # Validate
     is_valid, error = validate_source_data(source_id, label, path, rclone_remote)
     if not is_valid:
         return jsonify({"ok": False, "error": error}), 400
-    
+
     # Add to config
-    success, error = add_source_to_conf(source_id, label, path, enabled, rclone_remote)
-    
+    success, error = add_source_to_conf(source_id, label, path, enabled, rclone_remote, create_directory)
+
     if success:
         return jsonify({"ok": True})
     else:

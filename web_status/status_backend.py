@@ -576,45 +576,56 @@ def validate_source_data(source_id, label, path, rclone_remote):
     return True, None
 
 
-def add_source_to_conf(source_id, label, path, enabled, rclone_remote):
+def add_source_to_conf(source_id, label, path, enabled, rclone_remote, create_directory=False):
     """
     Add a new source to frame_sources.conf.
-    
+
     Args:
         source_id: Short identifier (e.g., "mycloud")
         label: Human-friendly name (e.g., "My Cloud Photos")
         path: Local directory path (e.g., "/home/pi/Pictures/mycloud_frame")
         enabled: 1 for enabled, 0 for disabled
         rclone_remote: Rclone remote and path (e.g., "mydrive:photos")
-    
+        create_directory: If True, create the directory if it doesn't exist
+
     Returns: (success, error_message)
     """
+    # Create directory if requested
+    if create_directory:
+        try:
+            from pathlib import Path
+            dir_path = Path(path)
+            if not dir_path.exists():
+                dir_path.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            return False, f"Failed to create directory: {str(e)}"
+
     # Validate first
     is_valid, error = validate_source_data(source_id, label, path, rclone_remote)
     if not is_valid:
         return False, error
-    
+
     paths = _get_paths()
     conf_path = paths["frame_sources_conf"]
-    
+
     if not conf_path.exists():
         return False, f"Config file not found: {conf_path}"
-    
+
     try:
         # Create backup
         backup_path = conf_path.with_suffix(".conf.backup")
         import shutil
         shutil.copy2(conf_path, backup_path)
-        
+
         # Format new source line
         enabled_str = "1" if enabled else "0"
         new_line = f"{source_id}|{label}|{path}|{enabled_str}|{rclone_remote}\n"
-        
+
         # Append to file
         with conf_path.open("a", encoding="utf-8") as f:
             f.write(new_line)
-        
+
         return True, None
-        
+
     except Exception as e:
         return False, f"Failed to write to config: {str(e)}"
