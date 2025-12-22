@@ -633,6 +633,39 @@ footer {
     opacity: 0.6;
 }
 
+/* Button variants */
+.btn-small {
+    font-size: 0.7rem;
+    padding: 0.35rem 0.7rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s ease;
+}
+
+.btn-danger {
+    background: radial-gradient(circle at top left, #dc2626, #b91c1c);
+    color: #fef2f2;
+    box-shadow:
+        0 8px 16px rgba(220, 38, 38, 0.5),
+        0 0 0 1px rgba(153, 27, 27, 0.9);
+}
+
+.btn-danger:hover {
+    background: radial-gradient(circle at top left, #ef4444, #dc2626);
+    transform: translateY(-1px);
+    box-shadow:
+        0 12px 20px rgba(220, 38, 38, 0.6),
+        0 0 0 1px rgba(153, 27, 27, 1);
+}
+
+.btn-danger:active {
+    transform: translateY(0);
+}
+
 /* RESPONSIVE */
 @media (max-width: 900px) {
     .top-row {

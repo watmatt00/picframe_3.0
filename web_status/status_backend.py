@@ -629,3 +629,62 @@ def add_source_to_conf(source_id, label, path, enabled, rclone_remote, create_di
 
     except Exception as e:
         return False, f"Failed to write to config: {str(e)}"
+
+
+def delete_source_from_conf(source_id):
+    """
+    Delete a source from frame_sources.conf.
+
+    Args:
+        source_id: The ID of the source to delete
+
+    Returns: (success, error_message)
+    """
+    if not source_id or not source_id.strip():
+        return False, "Source ID is required"
+
+    paths = _get_paths()
+    conf_path = paths["frame_sources_conf"]
+
+    if not conf_path.exists():
+        return False, f"Config file not found: {conf_path}"
+
+    try:
+        # Read all lines
+        lines = conf_path.read_text(encoding="utf-8").splitlines()
+
+        # Filter out the source to delete
+        new_lines = []
+        found = False
+        for line in lines:
+            stripped = line.strip()
+            # Keep comments and empty lines
+            if not stripped or stripped.startswith("#"):
+                new_lines.append(line)
+                continue
+
+            # Parse source line
+            parts = stripped.split("|")
+            if len(parts) >= 4:
+                src_id = parts[0]
+                if src_id == source_id:
+                    found = True
+                    continue  # Skip this line (delete it)
+
+            new_lines.append(line)
+
+        if not found:
+            return False, f"Source '{source_id}' not found"
+
+        # Create backup
+        backup_path = conf_path.with_suffix(".conf.backup")
+        import shutil
+        shutil.copy2(conf_path, backup_path)
+
+        # Write updated content
+        conf_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+
+        return True, None
+
+    except Exception as e:
+        return False, f"Failed to delete source: {str(e)}"

@@ -15,6 +15,7 @@ from status_backend import (
     run_chk_sync_detailed,
     get_sources_from_conf,
     add_source_to_conf,
+    delete_source_from_conf,
     validate_source_data,
     _get_paths,
 )
@@ -440,6 +441,32 @@ def api_create_source():
 
     # Add to config
     success, error = add_source_to_conf(source_id, label, path, enabled, rclone_remote, create_directory)
+
+    if success:
+        return jsonify({"ok": True})
+    else:
+        return jsonify({"ok": False, "error": error}), 500
+
+
+@app.route("/api/sources/delete", methods=["POST"])
+def api_delete_source():
+    """
+    Delete a source from frame_sources.conf.
+
+    Request body: {
+        "source_id": "mycloud"
+    }
+
+    Response:
+        {"ok": true} or {"ok": false, "error": "..."}
+    """
+    data = request.json or {}
+    source_id = data.get("source_id", "").strip()
+
+    if not source_id:
+        return jsonify({"ok": False, "error": "Source ID is required"}), 400
+
+    success, error = delete_source_from_conf(source_id)
 
     if success:
         return jsonify({"ok": True})
