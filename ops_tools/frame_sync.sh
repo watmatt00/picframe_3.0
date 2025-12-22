@@ -300,6 +300,8 @@ main() {
 
     local rc
 
+    # Temporarily disable 'set -e' to allow non-zero return codes from sync functions
+    set +e
     case "$SYNC_MODE" in
         QUICK)
             quick_mode_flow
@@ -315,6 +317,7 @@ main() {
             rc=1
             ;;
     esac
+    set -e
 
     # If rc == 2 we treat as a "restart recommended/attempted" case.
     if [ "$rc" -eq 2 ]; then
