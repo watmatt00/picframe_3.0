@@ -191,6 +191,7 @@ enter_safe_mode_if_needed() {
         touch "$SAFE_MODE_FILE"
         log_message "SAFE MODE flag created at $SAFE_MODE_FILE"
     fi
+    return 0
 }
 
 # -------------------------------------------------------------------
