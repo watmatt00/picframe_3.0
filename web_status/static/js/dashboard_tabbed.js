@@ -394,6 +394,8 @@ function initSourcesElements() {
         remote: document.getElementById('input-remote'),
         remotePath: document.getElementById('input-remote-path'),
         localDir: document.getElementById('input-local-dir'),
+        newDirName: document.getElementById('input-new-dir-name'),
+        newDirContainer: document.getElementById('new-dir-input-container'),
         enabled: document.getElementById('input-enabled'),
         btnTest: document.getElementById('btn-test-connection'),
         btnSave: document.getElementById('btn-save-source'),
@@ -407,6 +409,7 @@ function initSourcesElements() {
 
 function initSourcesEventListeners() {
     sourcesElements.remote.addEventListener('change', onRemoteChange);
+    sourcesElements.localDir.addEventListener('change', onLocalDirChange);
     sourcesElements.form.addEventListener('submit', onFormSubmit);
     sourcesElements.btnTest.addEventListener('click', onTestConnection);
 }
@@ -547,7 +550,7 @@ function renderLocalDirDropdown() {
 
 function onRemoteChange() {
     const selectedRemote = sourcesElements.remote.value;
-    
+
     if (!selectedRemote) {
         sourcesState.currentRemote = '';
         sourcesState.currentPath = [];
@@ -555,11 +558,25 @@ function onRemoteChange() {
         renderRemoteDirs([]);
         return;
     }
-    
+
     sourcesState.currentRemote = selectedRemote;
     sourcesState.currentPath = [];
     renderBreadcrumb();
     loadRemoteDirs();
+}
+
+function onLocalDirChange() {
+    const selectedValue = sourcesElements.localDir.value;
+
+    if (selectedValue === 'new') {
+        sourcesElements.newDirContainer.style.display = 'block';
+        sourcesElements.newDirName.required = true;
+        sourcesElements.newDirName.focus();
+    } else {
+        sourcesElements.newDirContainer.style.display = 'none';
+        sourcesElements.newDirName.required = false;
+        sourcesElements.newDirName.value = '';
+    }
 }
 
 async function loadRemoteDirs() {
@@ -691,61 +708,84 @@ async function onTestConnection() {
 
 async function onFormSubmit(event) {
     event.preventDefault();
-    
+
+    // Handle new directory creation
+    let localPath = sourcesElements.localDir.value;
+    let createDirectory = false;
+
+    if (localPath === 'new') {
+        const newDirName = sourcesElements.newDirName.value.trim();
+        if (!newDirName) {
+            showSourcesStatus('error', 'Please enter a directory name');
+            return;
+        }
+
+        // Validate directory name (alphanumeric, hyphens, underscores only)
+        if (!/^[a-zA-Z0-9_-]+$/.test(newDirName)) {
+            showSourcesStatus('error', 'Directory name must contain only letters, numbers, hyphens, and underscores');
+            return;
+        }
+
+        // Construct full path
+        localPath = `/home/pi/Pictures/${newDirName}`;
+        createDirectory = true;
+    }
+
+    // Gather form data
     const formData = {
         source_id: sourcesElements.sourceId.value.trim(),
         label: sourcesElements.label.value.trim(),
         rclone_remote: buildFullRemotePath(),
-        path: sourcesElements.localDir.value,
-        enabled: sourcesElements.enabled.checked
+        path: localPath,
+        enabled: sourcesElements.enabled.checked,
+        create_directory: createDirectory
     };
-    
+
+    // Validate
     if (!formData.source_id) {
         showSourcesStatus('error', 'Source ID is required');
         return;
     }
-    
+
     if (!formData.label) {
         showSourcesStatus('error', 'Label is required');
         return;
     }
-    
+
     if (!formData.rclone_remote) {
         showSourcesStatus('error', 'Please select a remote');
         return;
     }
-    
+
     if (!formData.path) {
-        showSourcesStatus('error', 'Please select a local directory');
+        showSourcesStatus('error', 'Please select or create a local directory');
         return;
     }
-    
-    if (formData.path === 'new') {
-        showSourcesStatus('error', 'Creating new directories is not yet implemented. Please create the directory manually first.');
-        return;
-    }
-    
+
+    // Disable submit button
     sourcesElements.btnSave.disabled = true;
     sourcesElements.btnSave.textContent = 'Saving...';
     showSourcesStatus('info', 'Creating new source...');
-    
+
     try {
         const response = await fetch('/api/sources/create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(formData)
         });
-        
+
         const data = await response.json();
-        
+
         if (data.ok) {
             showSourcesStatus('success', `Source "${formData.source_id}" created successfully!`);
-            
+
+            // Reset form
             sourcesElements.form.reset();
             sourcesState.currentPath = [];
             renderBreadcrumb();
             renderRemoteDirs([]);
-            
+
+            // Reload sources
             await loadSources();
         } else {
             showSourcesStatus('error', `Failed to create source: ${data.error}`);

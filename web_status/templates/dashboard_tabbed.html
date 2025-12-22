@@ -292,9 +292,14 @@
                             <select id="input-local-dir" class="form-select" required>
                                 <option value="">Loading directories...</option>
                             </select>
-                            <div class="form-hint">Directory under /home/pi/Pictures where photos will sync</div>
+                            <div id="new-dir-input-container" style="display: none; margin-top: 10px;">
+                                <input type="text" id="input-new-dir-name" class="form-input"
+                                       placeholder="Enter new directory name (e.g., my_photos)">
+                                <div class="form-hint">Directory will be created under /home/pi/Pictures</div>
+                            </div>
+                            <div class="form-hint" id="local-dir-hint">Directory under /home/pi/Pictures where photos will sync</div>
                         </div>
-                        
+
                         <div class="form-group">
                             <label class="form-label">Enable Source</label>
                             <div class="checkbox-wrapper">
