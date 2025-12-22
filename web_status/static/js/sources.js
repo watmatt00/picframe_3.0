@@ -33,18 +33,20 @@ function initElements() {
         remote: document.getElementById('input-remote'),
         remotePath: document.getElementById('input-remote-path'),
         localDir: document.getElementById('input-local-dir'),
+        newDirName: document.getElementById('input-new-dir-name'),
+        newDirContainer: document.getElementById('new-dir-input-container'),
         enabled: document.getElementById('input-enabled'),
-        
+
         // Buttons
         btnTest: document.getElementById('btn-test-connection'),
         btnSave: document.getElementById('btn-save-source'),
-        
+
         // Display areas
         sourcesTbody: document.getElementById('sources-tbody'),
         breadcrumb: document.getElementById('breadcrumb-path'),
         remoteDirList: document.getElementById('remote-dir-list'),
         statusMessage: document.getElementById('status-message'),
-        
+
         // Form
         form: document.getElementById('add-source-form')
     };
@@ -56,10 +58,13 @@ function initElements() {
 function initEventListeners() {
     // Remote dropdown change
     elements.remote.addEventListener('change', onRemoteChange);
-    
+
+    // Local directory dropdown change
+    elements.localDir.addEventListener('change', onLocalDirChange);
+
     // Form submission
     elements.form.addEventListener('submit', onFormSubmit);
-    
+
     // Test connection button
     elements.btnTest.addEventListener('click', onTestConnection);
 }
@@ -232,7 +237,7 @@ function renderLocalDirDropdown() {
  */
 function onRemoteChange() {
     const selectedRemote = elements.remote.value;
-    
+
     if (!selectedRemote) {
         state.currentRemote = '';
         state.currentPath = [];
@@ -240,11 +245,30 @@ function onRemoteChange() {
         renderRemoteDirs([]);
         return;
     }
-    
+
     state.currentRemote = selectedRemote;
     state.currentPath = [];
     renderBreadcrumb();
     loadRemoteDirs();
+}
+
+/**
+ * Handle local directory selection change
+ */
+function onLocalDirChange() {
+    const selectedValue = elements.localDir.value;
+
+    if (selectedValue === 'new') {
+        // Show the new directory input field
+        elements.newDirContainer.style.display = 'block';
+        elements.newDirName.required = true;
+        elements.newDirName.focus();
+    } else {
+        // Hide the new directory input field
+        elements.newDirContainer.style.display = 'none';
+        elements.newDirName.required = false;
+        elements.newDirName.value = '';
+    }
 }
 
 /**
