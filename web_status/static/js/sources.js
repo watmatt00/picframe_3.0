@@ -109,17 +109,17 @@ function renderSourcesTable() {
     if (state.sources.length === 0) {
         elements.sourcesTbody.innerHTML = `
             <tr>
-                <td colspan="5" class="loading-cell">
+                <td colspan="6" class="loading-cell">
                     No sources configured yet
                 </td>
             </tr>
         `;
         return;
     }
-    
+
     const rows = state.sources.map(source => {
         const statusBadges = [];
-        
+
         if (source.active) {
             statusBadges.push('<span class="source-status-badge active">Active</span>');
         }
@@ -128,7 +128,7 @@ function renderSourcesTable() {
         } else {
             statusBadges.push('<span class="source-status-badge disabled">Disabled</span>');
         }
-        
+
         return `
             <tr>
                 <td><strong>${escapeHtml(source.id)}</strong></td>
@@ -136,10 +136,13 @@ function renderSourcesTable() {
                 <td><code>${escapeHtml(source.path)}</code></td>
                 <td><code>${escapeHtml(source.remote || 'default')}</code></td>
                 <td>${statusBadges.join(' ')}</td>
+                <td>
+                    <button class="btn-small btn-danger" onclick="deleteSource('${escapeHtml(source.id)}')">Delete</button>
+                </td>
             </tr>
         `;
     }).join('');
-    
+
     elements.sourcesTbody.innerHTML = rows;
 }
 
@@ -558,6 +561,36 @@ function showStatus(type, message) {
         setTimeout(() => {
             elements.statusMessage.style.display = 'none';
         }, 5000);
+    }
+}
+
+/**
+ * Delete a source
+ */
+async function deleteSource(sourceId) {
+    if (!confirm(`Are you sure you want to delete source "${sourceId}"?\n\nThis will remove it from the configuration but will NOT delete any files.`)) {
+        return;
+    }
+
+    showStatus('info', `Deleting source "${sourceId}"...`);
+
+    try {
+        const response = await fetch('/api/sources/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source_id: sourceId })
+        });
+
+        const data = await response.json();
+
+        if (data.ok) {
+            showStatus('success', `Source "${sourceId}" deleted successfully!`);
+            await loadSources();
+        } else {
+            showStatus('error', `Failed to delete source: ${data.error}`);
+        }
+    } catch (err) {
+        showStatus('error', `Error deleting source: ${err.message}`);
     }
 }
 
