@@ -114,6 +114,19 @@ def api_restart_web():
     return jsonify(result)
 
 
+@app.route("/api/current-image")
+def api_current_image():
+    """Proxy the current image from picframe's web interface (port 9000)."""
+    import urllib.request
+    try:
+        with urllib.request.urlopen("http://localhost:9000/current_image", timeout=5) as response:
+            image_data = response.read()
+            return Response(image_data, mimetype="image/jpeg")
+    except Exception as e:
+        # Return a placeholder or error response
+        return jsonify({"error": str(e)}), 500
+
+
 # ---------------------------------------------------------------------------
 # Config API Routes
 # ---------------------------------------------------------------------------

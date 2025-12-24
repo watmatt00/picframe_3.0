@@ -318,6 +318,19 @@ function initStatusDashboard() {
     btnRestartPf.addEventListener("click", restartPfService);
     btnRestartWeb.addEventListener("click", restartWebService);
 
+    // Auto-refresh current image thumbnail
+    const thumbnailImg = document.getElementById("current-image-thumbnail");
+    if (thumbnailImg) {
+        function refreshThumbnail() {
+            // Add timestamp to bypass cache
+            const timestamp = new Date().getTime();
+            thumbnailImg.src = `/api/current-image?t=${timestamp}`;
+        }
+
+        // Refresh thumbnail every 30 seconds
+        setInterval(refreshThumbnail, 30000);
+    }
+
     // Initial load
     refreshStatus();
     setInterval(refreshStatus, 15000);
