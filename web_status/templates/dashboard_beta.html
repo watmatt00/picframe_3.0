@@ -115,9 +115,7 @@
                         <div class="meta-line">
                             <strong>Currently Checking:</strong> <span id="tech-source-name">--</span><br>
                             <strong>Cloud Path:</strong> <span id="tech-remote-path">--</span><br>
-                            <strong>Local Path:</strong> <span id="tech-local-path">--</span><br>
-                            <strong>Script:</strong> {{ script_path }}<br>
-                            <strong>Log:</strong> {{ log_path }}
+                            <strong>Frame Path:</strong> <span id="tech-local-path">--</span>
                         </div>
                     </div>
                 </div>
@@ -170,6 +168,11 @@
                 <div style="padding: 0 1.5rem;">
                     <button class="advanced-toggle" id="logs-advanced-toggle">▸ Show logs</button>
                     <div class="advanced-section" id="logs-advanced-section">
+                        <div class="meta-line" style="margin-bottom: 1rem; font-size: 0.875rem;">
+                            <strong>Script:</strong> {{ script_path }}<br>
+                            <strong>Log:</strong> {{ log_path }}
+                        </div>
+
                         <div class="log-section-header">
                             <span>Recent Activity Log</span>
                         </div>

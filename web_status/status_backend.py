@@ -354,8 +354,9 @@ def _parse_source_details_from_quick(raw_lines) -> dict:
 
     Example output from chk_sync.sh:
       Active source: kfr - Koofr (kfr_frame)
-      Using rclone remote: kfrphotos:KFR_kframe
-      Local directory:    /home/pi/Pictures/kfr_frame
+        Source ID : kfr
+        Remote    : kfrphotos:KFR_kframe
+        Local dir : /home/pi/Pictures/kfr_frame
     """
     result = {
         "source_name": "--",
@@ -378,19 +379,25 @@ def _parse_source_details_from_quick(raw_lines) -> dict:
             except Exception:
                 continue
 
-        # Parse remote path
-        elif "rclone remote:" in lower or "using rclone remote:" in lower:
+        # Parse remote path - look for "Remote    :" or "Remote:"
+        elif "remote" in lower and ":" in stripped and "active source" not in lower:
             try:
-                after = stripped.split(":", 1)[1].strip()
-                result["remote_path"] = after
+                # Split on first colon and take everything after
+                parts = stripped.split(":", 1)
+                if len(parts) == 2:
+                    after = parts[1].strip()
+                    # Only set if it looks like a path (contains ":" for rclone remote)
+                    if after and ":" in after:
+                        result["remote_path"] = after
             except Exception:
                 continue
 
-        # Parse local directory
-        elif lower.startswith("local directory:"):
+        # Parse local directory - look for "Local dir :" or "Local directory:"
+        elif "local" in lower and ("dir" in lower or "directory" in lower) and ":" in stripped:
             try:
                 after = stripped.split(":", 1)[1].strip()
-                result["local_path"] = after
+                if after and after.startswith("/"):
+                    result["local_path"] = after
             except Exception:
                 continue
 
