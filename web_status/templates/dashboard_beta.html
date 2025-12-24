@@ -206,6 +206,40 @@
     <!-- SWITCH PHOTOS TAB CONTENT -->
     <div id="tab-sources" class="tab-content">
         <main>
+            <!-- Photo Sources Section -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">☁️ Photo Sources</div>
+                        <div class="card-subtitle">Your configured cloud photo libraries</div>
+                    </div>
+                </div>
+
+                <div id="sources-table-container">
+                    <table class="sources-table" id="sources-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Photos Ready</th>
+                                <th>Cloud Location</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sources-tbody">
+                            <tr>
+                                <td colspan="5" class="loading-cell">Loading photo sources...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Advanced toggle for technical view -->
+                <div style="padding: 1rem;">
+                    <button class="advanced-toggle" id="sources-table-advanced-toggle">▸ Show technical columns</button>
+                </div>
+            </section>
+
             <!-- Current Photo Source Section -->
             <section class="card">
                 <div class="card-header">
@@ -246,40 +280,6 @@
                             <strong>Technical note:</strong> This changes the symlink at /home/pi/Pictures/frame_live to point to the selected directory.
                         </div>
                     </div>
-                </div>
-            </section>
-
-            <!-- All Photo Sources Section -->
-            <section class="card">
-                <div class="card-header">
-                    <div>
-                        <div class="card-title">☁️ All Photo Sources</div>
-                        <div class="card-subtitle">Your configured cloud photo libraries</div>
-                    </div>
-                </div>
-
-                <div id="sources-table-container">
-                    <table class="sources-table" id="sources-table">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Photos Ready</th>
-                                <th>Cloud Location</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="sources-tbody">
-                            <tr>
-                                <td colspan="5" class="loading-cell">Loading photo sources...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Advanced toggle for technical view -->
-                <div style="padding: 1rem;">
-                    <button class="advanced-toggle" id="sources-table-advanced-toggle">▸ Show technical columns</button>
                 </div>
             </section>
 
