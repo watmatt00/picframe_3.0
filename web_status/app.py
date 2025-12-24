@@ -66,6 +66,19 @@ def sources_page():
     )
 
 
+@app.route("/beta")
+def beta_page():
+    """Render the beta dashboard with simplified, grandma-friendly interface."""
+    host_name = socket.gethostname().upper()
+    paths = _get_paths()
+    return render_template(
+        "dashboard_beta.html",
+        host_name=host_name,
+        script_path=str(paths["chk_script"]),
+        log_path=str(paths["log_file"]),
+    )
+
+
 @app.route("/api/status")
 def api_status():
     """Return current status JSON for the dashboard."""
