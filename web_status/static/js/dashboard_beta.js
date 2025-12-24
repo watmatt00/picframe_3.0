@@ -907,8 +907,8 @@ async function onUpdateFrameLive() {
     }
 
     sourcesElements.btnUpdateFrameLive.disabled = true;
-    sourcesElements.btnUpdateFrameLive.textContent = 'Updating...';
-    showFrameLiveStatus('info', 'Updating frame_live symlink...');
+    sourcesElements.btnUpdateFrameLive.textContent = 'Switching & Syncing...';
+    showFrameLiveStatus('info', 'Switching photos and syncing from cloud...');
 
     try {
         const response = await fetch('/api/frame-live', {
@@ -920,8 +920,16 @@ async function onUpdateFrameLive() {
         const data = await response.json();
 
         if (data.ok) {
-            showFrameLiveStatus('success', 'frame_live updated successfully!');
+            if (data.sync_triggered) {
+                showFrameLiveStatus('success', 'Photos switched and synced successfully!');
+            } else {
+                showFrameLiveStatus('success', 'Photos switched successfully!');
+            }
             await loadFrameLive();
+            // Refresh status to show updated counts
+            if (typeof refreshStatus === 'function') {
+                await refreshStatus();
+            }
         } else {
             showFrameLiveStatus('error', `Failed to update: ${data.error}`);
         }
@@ -929,7 +937,7 @@ async function onUpdateFrameLive() {
         showFrameLiveStatus('error', `Error: ${err.message}`);
     } finally {
         sourcesElements.btnUpdateFrameLive.disabled = false;
-        sourcesElements.btnUpdateFrameLive.textContent = 'Update frame_live';
+        sourcesElements.btnUpdateFrameLive.textContent = 'Switch Photos';
     }
 }
 

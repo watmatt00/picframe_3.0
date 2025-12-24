@@ -564,7 +564,16 @@ def api_set_frame_live():
     success, error = set_frame_live_target(target_dir)
 
     if success:
-        return jsonify({"ok": True})
+        # Trigger sync for the new source
+        from status_backend import run_sync_now
+        sync_result = run_sync_now()
+
+        # Return success with sync status
+        return jsonify({
+            "ok": True,
+            "sync_triggered": True,
+            "sync_output": sync_result.get("output", "")
+        })
     else:
         return jsonify({"ok": False, "error": error}), 500
 
