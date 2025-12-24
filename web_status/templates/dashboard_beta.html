@@ -113,6 +113,9 @@
                     <button class="advanced-toggle" id="status-advanced-toggle">▸ Show technical details</button>
                     <div class="advanced-section" id="status-advanced-section">
                         <div class="meta-line">
+                            <strong>Currently Checking:</strong> <span id="tech-source-name">--</span><br>
+                            <strong>Cloud Path:</strong> <span id="tech-remote-path">--</span><br>
+                            <strong>Local Path:</strong> <span id="tech-local-path">--</span><br>
                             <strong>Script:</strong> {{ script_path }}<br>
                             <strong>Log:</strong> {{ log_path }}
                         </div>
@@ -138,9 +141,6 @@
                         <div class="btn-spinner" id="btn-run-d-spinner" style="display:none;"></div>
                         <span id="btn-run-d-label">Deep Check</span>
                     </button>
-                </div>
-
-                <div class="button-row">
                     <button class="btn" id="btn-restart-pf">
                         <div class="btn-spinner" id="btn-restart-pf-spinner" style="display:none;"></div>
                         <span id="btn-restart-pf-label">♻️ Restart Frame</span>
@@ -172,78 +172,14 @@
                     <div class="advanced-section" id="logs-advanced-section">
                         <div class="log-section-header">
                             <span>Recent Activity Log</span>
-                            <button class="log-toggle" id="log-toggle">Show log ▸</button>
                         </div>
-                        <div class="log-text" id="log-tail" style="display:none;"></div>
+                        <div class="log-text" id="log-tail"></div>
 
                         <div class="log-section-header" style="margin-top: 0.9rem;">
                             <span>Deep Check Output</span>
                         </div>
                         <div class="log-text" id="chk-d-output">(not run yet)</div>
                     </div>
-                </div>
-            </section>
-
-            <!-- Settings Card (Collapsed by default) -->
-            <section class="card settings-card" id="settings-card">
-                <div class="tools-card-header">
-                    <div>
-                        <div class="tools-title">⚙️ Advanced Configuration</div>
-                        <div class="tools-subtitle">System settings for experts</div>
-                    </div>
-                    <button class="log-toggle" id="settings-toggle">Expand</button>
-                </div>
-
-                <div id="settings-body" style="display:none;">
-                    <div class="form-group">
-                        <label class="form-label">Active Photo Source</label>
-                        <select id="cfg-source" class="form-select">
-                            <option value="">Loading sources...</option>
-                        </select>
-                        <div class="form-hint">Which cloud photos to show on the frame</div>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Cloud Storage Path</label>
-                        <input type="text" id="cfg-rclone-remote" class="form-input"
-                               placeholder="mydrive:photos">
-                        <div class="form-hint">Format: remotename:path (run 'rclone config' to set up)</div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Frame Photo Directory</label>
-                            <input type="text" id="cfg-local-dir" class="form-input"
-                                   placeholder="/home/pi/Pictures/frame">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Log Directory</label>
-                            <input type="text" id="cfg-log-dir" class="form-input"
-                                   placeholder="/home/pi/logs">
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">App Root Directory</label>
-                            <input type="text" id="cfg-app-root" class="form-input"
-                                   placeholder="/home/pi/picframe_3.0">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Device Hostname</label>
-                            <input type="text" id="cfg-hostname" class="form-input"
-                                   placeholder="(leave empty to disable check)">
-                            <div class="form-hint">Optional: restrict scripts to this host</div>
-                        </div>
-                    </div>
-
-                    <div class="button-row" style="margin-top: 1rem;">
-                        <button class="btn" id="btn-save-config">Save Settings</button>
-                        <button class="btn secondary" id="btn-test-remote">Test Connection</button>
-                        <button class="btn secondary" id="btn-export-config">Export Config</button>
-                    </div>
-
-                    <div id="settings-status" class="settings-status" style="display:none;"></div>
                 </div>
             </section>
         </main>

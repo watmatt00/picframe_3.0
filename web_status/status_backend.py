@@ -347,6 +347,56 @@ def _current_remote_from_quick(raw_lines) -> str:
     return "--"
 
 
+def _parse_source_details_from_quick(raw_lines) -> dict:
+    """
+    Parse detailed source information from chk_sync.sh output.
+    Returns dict with: source_name, remote_path, local_path
+
+    Example output from chk_sync.sh:
+      Active source: kfr - Koofr (kfr_frame)
+      Using rclone remote: kfrphotos:KFR_kframe
+      Local directory:    /home/pi/Pictures/kfr_frame
+    """
+    result = {
+        "source_name": "--",
+        "remote_path": "--",
+        "local_path": "--",
+    }
+
+    if not raw_lines:
+        return result
+
+    for line in raw_lines:
+        stripped = line.strip()
+        lower = stripped.lower()
+
+        # Parse active source name
+        if lower.startswith("active source:"):
+            try:
+                after = stripped.split(":", 1)[1].strip()
+                result["source_name"] = after
+            except Exception:
+                continue
+
+        # Parse remote path
+        elif "rclone remote:" in lower or "using rclone remote:" in lower:
+            try:
+                after = stripped.split(":", 1)[1].strip()
+                result["remote_path"] = after
+            except Exception:
+                continue
+
+        # Parse local directory
+        elif lower.startswith("local directory:"):
+            try:
+                after = stripped.split(":", 1)[1].strip()
+                result["local_path"] = after
+            except Exception:
+                continue
+
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Public API used by app.py
 # ---------------------------------------------------------------------------
@@ -396,6 +446,9 @@ def get_status_payload():
         if not current_remote or current_remote == "--":
             current_remote = _current_remote_from_quick(quick.get("raw_output"))
 
+        # Extract detailed path info from quick check output
+        source_details = _parse_source_details_from_quick(quick.get("raw_output"))
+
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         return {
@@ -411,6 +464,7 @@ def get_status_payload():
             "web_status": web_status,
             "pf_status": pf_status,
             "current_remote": current_remote or "--",
+            "source_details": source_details,
             "activity": {
                 "last_service_restart": log_info["last_service_restart"],
                 "last_file_download": log_info["last_file_download"],
@@ -436,6 +490,11 @@ def get_status_payload():
             "web_status": "unknown",
             "pf_status": "unknown",
             "current_remote": "--",
+            "source_details": {
+                "source_name": "--",
+                "remote_path": "--",
+                "local_path": "--",
+            },
             "activity": {
                 "last_service_restart": "--",
                 "last_file_download": "--",

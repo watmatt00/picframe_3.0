@@ -142,18 +142,11 @@ function initStatusDashboard() {
     const btnRestartWeb = document.getElementById("btn-restart-web");
     const btnRestartWebSpinner = document.getElementById("btn-restart-web-spinner");
     const btnRestartWebLabel = document.getElementById("btn-restart-web-label");
-    const logToggle = document.getElementById("log-toggle");
 
-    let logVisible = false;
-
-    // Initialize log as hidden
-    logTailEl.style.display = "none";
-
-    logToggle.addEventListener("click", () => {
-        logVisible = !logVisible;
-        logTailEl.style.display = logVisible ? "block" : "none";
-        logToggle.textContent = logVisible ? "Hide log ▾" : "Show log ▸";
-    });
+    // Technical details elements
+    const techSourceName = document.getElementById("tech-source-name");
+    const techRemotePath = document.getElementById("tech-remote-path");
+    const techLocalPath = document.getElementById("tech-local-path");
 
     function setServiceDot(dotEl, textEl, status) {
         const s = (status || "").toLowerCase();
@@ -231,6 +224,12 @@ function initStatusDashboard() {
             setServiceDot(pfDot, pfText, data.pf_status);
 
             currentRemoteEl.textContent = data.current_remote || "--";
+
+            // Update technical details section
+            const sourceDetails = data.source_details || {};
+            if (techSourceName) techSourceName.textContent = sourceDetails.source_name || "--";
+            if (techRemotePath) techRemotePath.textContent = sourceDetails.remote_path || "--";
+            if (techLocalPath) techLocalPath.textContent = sourceDetails.local_path || "--";
 
             const act = data.activity || {};
             lastRunEl.textContent = act.last_run || nowStr || "—";
@@ -319,163 +318,7 @@ function initStatusDashboard() {
     btnRestartPf.addEventListener("click", restartPfService);
     btnRestartWeb.addEventListener("click", restartWebService);
 
-    // Settings functionality
-    const settingsToggle = document.getElementById("settings-toggle");
-    const settingsBody = document.getElementById("settings-body");
-    const settingsStatus = document.getElementById("settings-status");
-
-    const cfgSource = document.getElementById("cfg-source");
-    const cfgRcloneRemote = document.getElementById("cfg-rclone-remote");
-    const cfgLocalDir = document.getElementById("cfg-local-dir");
-    const cfgLogDir = document.getElementById("cfg-log-dir");
-    const cfgAppRoot = document.getElementById("cfg-app-root");
-    const cfgHostname = document.getElementById("cfg-hostname");
-
-    const btnSaveConfig = document.getElementById("btn-save-config");
-    const btnTestRemote = document.getElementById("btn-test-remote");
-    const btnExportConfig = document.getElementById("btn-export-config");
-
-    let settingsVisible = true;
-
-    settingsToggle.addEventListener("click", () => {
-        settingsVisible = !settingsVisible;
-        settingsBody.style.display = settingsVisible ? "block" : "none";
-        settingsToggle.textContent = settingsVisible ? "Collapse" : "Expand";
-    });
-
-    async function loadConfig() {
-        try {
-            const resp = await fetch("/api/config");
-            const data = await resp.json();
-            
-            if (data.exists && data.config) {
-                cfgRcloneRemote.value = data.config.RCLONE_REMOTE || "";
-                cfgLocalDir.value = data.config.LOCAL_DIR || "";
-                cfgLogDir.value = data.config.LOG_DIR || "";
-                cfgAppRoot.value = data.config.APP_ROOT || "";
-                cfgHostname.value = data.config.ALLOWED_HOST || "";
-            }
-            
-            await loadConfigSources(data.config?.ACTIVE_SOURCE);
-        } catch (err) {
-            console.error("Failed to load config:", err);
-        }
-    }
-
-    async function loadConfigSources(activeSource) {
-        try {
-            const resp = await fetch("/api/sources");
-            const data = await resp.json();
-            
-            cfgSource.innerHTML = "";
-            if (data.sources && data.sources.length > 0) {
-                data.sources.forEach(src => {
-                    const opt = document.createElement("option");
-                    opt.value = src.id;
-                    opt.textContent = src.label + (src.enabled ? "" : " (disabled)");
-                    opt.disabled = !src.enabled;
-                    if (src.id === activeSource || src.active) {
-                        opt.selected = true;
-                    }
-                    cfgSource.appendChild(opt);
-                });
-            } else {
-                cfgSource.innerHTML = '<option value="">No sources configured</option>';
-            }
-        } catch (err) {
-            cfgSource.innerHTML = '<option value="">Error loading sources</option>';
-        }
-    }
-
-    btnSaveConfig.addEventListener("click", async () => {
-        btnSaveConfig.disabled = true;
-        btnSaveConfig.textContent = "Saving...";
-        
-        const payload = {
-            RCLONE_REMOTE: cfgRcloneRemote.value,
-            LOCAL_DIR: cfgLocalDir.value,
-            LOG_DIR: cfgLogDir.value,
-            APP_ROOT: cfgAppRoot.value,
-            ALLOWED_HOST: cfgHostname.value,
-            ACTIVE_SOURCE: cfgSource.value,
-        };
-        
-        try {
-            const resp = await fetch("/api/config", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
-            const data = await resp.json();
-            
-            if (data.ok) {
-                showSettingsStatus("success", "Settings saved successfully!");
-                if (cfgSource.value) {
-                    await switchSource(cfgSource.value);
-                }
-            } else {
-                showSettingsStatus("error", (data.errors || []).join(", ") || "Failed to save");
-            }
-        } catch (err) {
-            showSettingsStatus("error", "Failed to save: " + err);
-        } finally {
-            btnSaveConfig.disabled = false;
-            btnSaveConfig.textContent = "Save Settings";
-        }
-    });
-
-    btnTestRemote.addEventListener("click", async () => {
-        btnTestRemote.disabled = true;
-        btnTestRemote.textContent = "Testing...";
-        
-        try {
-            const resp = await fetch("/api/config/test-remote", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ remote: cfgRcloneRemote.value })
-            });
-            const data = await resp.json();
-            
-            if (data.ok) {
-                showSettingsStatus("success", "Connected! Found " + data.file_count + " files.");
-            } else {
-                showSettingsStatus("error", "Connection failed: " + data.error);
-            }
-        } catch (err) {
-            showSettingsStatus("error", "Test failed: " + err);
-        } finally {
-            btnTestRemote.disabled = false;
-            btnTestRemote.textContent = "Test Connection";
-        }
-    });
-
-    btnExportConfig.addEventListener("click", () => {
-        window.location.href = "/api/config/export";
-    });
-
-    async function switchSource(sourceId) {
-        try {
-            await fetch("/api/sources/active", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ source_id: sourceId })
-            });
-        } catch (err) {
-            console.error("Failed to switch source:", err);
-        }
-    }
-
-    function showSettingsStatus(type, message) {
-        settingsStatus.className = "settings-status " + type;
-        settingsStatus.textContent = message;
-        settingsStatus.style.display = "block";
-        setTimeout(() => {
-            settingsStatus.style.display = "none";
-        }, 5000);
-    }
-
     // Initial load
-    loadConfig();
     refreshStatus();
     setInterval(refreshStatus, 15000);
 }
