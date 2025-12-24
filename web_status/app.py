@@ -114,6 +114,14 @@ def api_restart_web():
     return jsonify(result)
 
 
+@app.route("/api/sync-now", methods=["POST"])
+def api_sync_now():
+    """Trigger frame_sync.sh immediately and return its output as JSON."""
+    from status_backend import run_sync_now
+    result = run_sync_now()
+    return jsonify(result)
+
+
 @app.route("/api/current-image")
 def api_current_image():
     """Proxy the current image from picframe's web interface (port 9000)."""

@@ -627,6 +627,47 @@ def run_restart_web_service():
         }
 
 
+def run_sync_now():
+    """
+    Run frame_sync.sh immediately to trigger a manual sync.
+    """
+    paths = _get_paths()
+    app_root = paths["app_root"]
+    sync_script = app_root / "ops_tools" / "frame_sync.sh"
+
+    env = os.environ.copy()
+    env.setdefault("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
+    # Ensure XDG_RUNTIME_DIR is set for systemctl --user
+    env.setdefault("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+
+    try:
+        result = subprocess.run(
+            [str(sync_script)],
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=300,  # 5 minutes - sync can take longer than restart
+            env=env,
+        )
+        output = ""
+        if result.stdout:
+            output += result.stdout
+        if result.stderr:
+            if output:
+                output += "\n"
+            output += result.stderr
+
+        return {
+            "ok": (result.returncode == 0),
+            "output": output,
+        }
+    except Exception as e:
+        return {
+            "ok": False,
+            "output": f"Error running sync script: {e}",
+        }
+
+
 # ---------------------------------------------------------------------------
 # Source helpers (for API endpoints)
 # ---------------------------------------------------------------------------

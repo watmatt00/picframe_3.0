@@ -136,6 +136,9 @@ function initStatusDashboard() {
     const btnRunD = document.getElementById("btn-run-d");
     const btnRunDSpinner = document.getElementById("btn-run-d-spinner");
     const btnRunDLabel = document.getElementById("btn-run-d-label");
+    const btnSyncNow = document.getElementById("btn-sync-now");
+    const btnSyncNowSpinner = document.getElementById("btn-sync-now-spinner");
+    const btnSyncNowLabel = document.getElementById("btn-sync-now-label");
     const btnRestartPf = document.getElementById("btn-restart-pf");
     const btnRestartPfSpinner = document.getElementById("btn-restart-pf-spinner");
     const btnRestartPfLabel = document.getElementById("btn-restart-pf-label");
@@ -313,8 +316,32 @@ function initStatusDashboard() {
         }
     }
 
+    async function syncNow() {
+        btnSyncNow.disabled = true;
+        btnSyncNowSpinner.style.display = "inline-block";
+        btnSyncNowLabel.textContent = "Syncing…";
+        try {
+            const resp = await fetch("/api/sync-now", { method: "POST" });
+            const data = await resp.json();
+            if (data.ok) {
+                alert("Sync completed successfully!\n\nPhotos have been synced from the cloud.");
+                await refreshStatus();
+            } else {
+                alert("Sync failed:\n\n" + (data.output || "Error"));
+            }
+        } catch (err) {
+            console.error("Failed to sync", err);
+            alert("Error syncing: " + err);
+        } finally {
+            btnSyncNow.disabled = false;
+            btnSyncNowSpinner.style.display = "none";
+            btnSyncNowLabel.textContent = "🔄 Sync Now";
+        }
+    }
+
     btnRefresh.addEventListener("click", refreshStatus);
     btnRunD.addEventListener("click", runChkSyncD);
+    btnSyncNow.addEventListener("click", syncNow);
     btnRestartPf.addEventListener("click", restartPfService);
     btnRestartWeb.addEventListener("click", restartWebService);
 

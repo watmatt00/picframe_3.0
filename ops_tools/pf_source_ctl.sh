@@ -229,6 +229,20 @@ cmd_set() {
     log "  ${SYMLINK_PATH} -> $(readlink -f "${SYMLINK_PATH}")"
 
     restart_picframe_service
+
+    # Trigger immediate sync of the new source
+    log "Triggering sync for new source..."
+    local sync_script="${SCRIPT_DIR}/frame_sync.sh"
+    if [[ -x "${sync_script}" ]]; then
+        if bash "${sync_script}" >> "${LOG_DIR:-/home/pi/logs}/frame_sync_$(date +%Y-%m-%d).log" 2>&1; then
+            log "Sync completed successfully for new source '${sid}'"
+        else
+            log "WARNING: Sync failed for new source '${sid}' - check logs"
+        fi
+    else
+        log "WARNING: Sync script not found or not executable: ${sync_script}"
+    fi
+
     log "Done."
 
     return 0
