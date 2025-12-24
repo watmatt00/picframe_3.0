@@ -244,49 +244,6 @@
                 </div>
             </section>
 
-            <!-- Current Photo Source Section -->
-            <section class="card">
-                <div class="card-header">
-                    <div>
-                        <div class="card-title">📸 Current Photo Source</div>
-                        <div class="card-subtitle">The photos currently displaying on your frame</div>
-                    </div>
-                </div>
-
-                <div style="padding: 1.5rem;">
-                    <div class="form-group">
-                        <label class="form-label">Currently Showing</label>
-                        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-                            <code id="frame-live-current" style="flex: 1; padding: 0.5rem 1rem; background: rgba(0,0,0,0.3); border-radius: 6px;">
-                                Loading...
-                            </code>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Switch To</label>
-                        <select id="frame-live-selector" class="form-select">
-                            <option value="">Loading photo sources...</option>
-                        </select>
-                        <div class="form-hint">Choose which photos to display on the frame</div>
-                    </div>
-
-                    <div class="button-row">
-                        <button class="btn" id="btn-update-frame-live">Switch Photos</button>
-                    </div>
-
-                    <div id="frame-live-status" class="status-message" style="display:none; margin-top: 1rem;"></div>
-
-                    <!-- Advanced technical details -->
-                    <button class="advanced-toggle" id="source-switch-advanced-toggle">▸ Show technical details</button>
-                    <div class="advanced-section" id="source-switch-advanced-section">
-                        <div class="form-hint">
-                            <strong>Technical note:</strong> This changes the symlink at /home/pi/Pictures/frame_live to point to the selected directory.
-                        </div>
-                    </div>
-                </div>
-            </section>
-
             <!-- Add New Source Section -->
             <section class="card">
                 <div class="card-header">
