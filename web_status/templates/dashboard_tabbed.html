@@ -205,6 +205,41 @@
     <!-- SOURCE MANAGER TAB CONTENT -->
     <div id="tab-sources" class="tab-content">
         <main>
+            <!-- Local Source Section -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Local Source</div>
+                        <div class="card-subtitle">Current frame_live directory mapping</div>
+                    </div>
+                </div>
+
+                <div style="padding: 1.5rem;">
+                    <div class="form-group">
+                        <label class="form-label">Current Target</label>
+                        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                            <code id="frame-live-current" style="flex: 1; padding: 0.5rem 1rem; background: rgba(0,0,0,0.3); border-radius: 6px;">
+                                Loading...
+                            </code>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Change Target Directory</label>
+                        <select id="frame-live-selector" class="form-select">
+                            <option value="">Loading directories...</option>
+                        </select>
+                        <div class="form-hint">Select a directory under /home/pi/Pictures to set as active</div>
+                    </div>
+
+                    <div class="button-row">
+                        <button class="btn" id="btn-update-frame-live">Update frame_live</button>
+                    </div>
+
+                    <div id="frame-live-status" class="status-message" style="display:none; margin-top: 1rem;"></div>
+                </div>
+            </section>
+
             <!-- Existing Sources Section -->
             <section class="card">
                 <div class="card-header">

@@ -403,7 +403,11 @@ function initSourcesElements() {
         breadcrumb: document.getElementById('breadcrumb-path'),
         remoteDirList: document.getElementById('remote-dir-list'),
         statusMessage: document.getElementById('status-message'),
-        form: document.getElementById('add-source-form')
+        form: document.getElementById('add-source-form'),
+        frameLiveCurrent: document.getElementById('frame-live-current'),
+        frameLiveSelector: document.getElementById('frame-live-selector'),
+        btnUpdateFrameLive: document.getElementById('btn-update-frame-live'),
+        frameLiveStatus: document.getElementById('frame-live-status')
     };
 }
 
@@ -412,13 +416,15 @@ function initSourcesEventListeners() {
     sourcesElements.localDir.addEventListener('change', onLocalDirChange);
     sourcesElements.form.addEventListener('submit', onFormSubmit);
     sourcesElements.btnTest.addEventListener('click', onTestConnection);
+    sourcesElements.btnUpdateFrameLive.addEventListener('click', onUpdateFrameLive);
 }
 
 async function loadSourcesInitialData() {
     await Promise.all([
         loadSources(),
         loadRcloneRemotes(),
-        loadLocalDirs()
+        loadLocalDirs(),
+        loadFrameLive()
     ]);
 }
 
@@ -848,6 +854,98 @@ async function deleteSource(sourceId) {
         }
     } catch (err) {
         showSourcesStatus('error', `Error deleting source: ${err.message}`);
+    }
+}
+
+async function loadFrameLive() {
+    try {
+        // Load current frame_live target
+        const frameLiveResp = await fetch('/api/frame-live');
+        const frameLiveData = await frameLiveResp.json();
+
+        if (frameLiveData.target) {
+            sourcesElements.frameLiveCurrent.textContent = frameLiveData.target;
+        } else {
+            sourcesElements.frameLiveCurrent.textContent = 'Not set (symlink does not exist)';
+        }
+
+        // Load available directories from /Pictures
+        const localDirsResp = await fetch('/api/local/list-dirs');
+        const localDirsData = await localDirsResp.json();
+
+        if (localDirsData.ok && localDirsData.dirs) {
+            renderFrameLiveSelector(localDirsData.dirs, frameLiveData.target_name);
+        } else {
+            sourcesElements.frameLiveSelector.innerHTML = '<option value="">Error loading directories</option>';
+        }
+    } catch (err) {
+        console.error('Failed to load frame_live:', err);
+        sourcesElements.frameLiveCurrent.textContent = 'Error loading';
+    }
+}
+
+function renderFrameLiveSelector(dirs, currentTarget) {
+    if (dirs.length === 0) {
+        sourcesElements.frameLiveSelector.innerHTML = '<option value="">No directories found</option>';
+        return;
+    }
+
+    const options = dirs.map(dir => {
+        const fullPath = `/home/pi/Pictures/${dir}`;
+        const selected = dir === currentTarget ? ' selected' : '';
+        return `<option value="${escapeHtml(fullPath)}"${selected}>/home/pi/Pictures/${escapeHtml(dir)}</option>`;
+    }).join('');
+
+    sourcesElements.frameLiveSelector.innerHTML = `
+        <option value="">Select a directory...</option>
+        ${options}
+    `;
+}
+
+async function onUpdateFrameLive() {
+    const targetDir = sourcesElements.frameLiveSelector.value;
+
+    if (!targetDir) {
+        showFrameLiveStatus('error', 'Please select a directory');
+        return;
+    }
+
+    sourcesElements.btnUpdateFrameLive.disabled = true;
+    sourcesElements.btnUpdateFrameLive.textContent = 'Updating...';
+    showFrameLiveStatus('info', 'Updating frame_live symlink...');
+
+    try {
+        const response = await fetch('/api/frame-live', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ target_dir: targetDir })
+        });
+
+        const data = await response.json();
+
+        if (data.ok) {
+            showFrameLiveStatus('success', 'frame_live updated successfully!');
+            await loadFrameLive();
+        } else {
+            showFrameLiveStatus('error', `Failed to update: ${data.error}`);
+        }
+    } catch (err) {
+        showFrameLiveStatus('error', `Error: ${err.message}`);
+    } finally {
+        sourcesElements.btnUpdateFrameLive.disabled = false;
+        sourcesElements.btnUpdateFrameLive.textContent = 'Update frame_live';
+    }
+}
+
+function showFrameLiveStatus(type, message) {
+    sourcesElements.frameLiveStatus.className = `status-message ${type}`;
+    sourcesElements.frameLiveStatus.textContent = message;
+    sourcesElements.frameLiveStatus.style.display = 'block';
+
+    if (type === 'success' || type === 'info') {
+        setTimeout(() => {
+            sourcesElements.frameLiveStatus.style.display = 'none';
+        }, 5000);
     }
 }
 

@@ -688,3 +688,78 @@ def delete_source_from_conf(source_id):
 
     except Exception as e:
         return False, f"Failed to delete source: {str(e)}"
+
+
+def get_frame_live_target():
+    """
+    Get the current target of the frame_live symlink.
+
+    Returns: {
+        "exists": bool,
+        "is_symlink": bool,
+        "target": str or None,
+        "target_name": str or None (just the directory name)
+    }
+    """
+    paths = _get_paths()
+    frame_live = paths["frame_live"]
+
+    result = {
+        "exists": frame_live.exists(),
+        "is_symlink": frame_live.is_symlink(),
+        "target": None,
+        "target_name": None
+    }
+
+    if frame_live.is_symlink():
+        try:
+            target = frame_live.resolve()
+            result["target"] = str(target)
+            result["target_name"] = target.name
+        except Exception:
+            pass
+
+    return result
+
+
+def set_frame_live_target(target_dir):
+    """
+    Set the frame_live symlink to point to a new directory.
+
+    Args:
+        target_dir: Full path to the target directory (e.g., "/home/pi/Pictures/kfr_frame")
+
+    Returns: (success, error_message)
+    """
+    from pathlib import Path
+
+    paths = _get_paths()
+    frame_live = paths["frame_live"]
+    target_path = Path(target_dir)
+
+    # Validate target exists and is a directory
+    if not target_path.exists():
+        return False, f"Target directory does not exist: {target_dir}"
+
+    if not target_path.is_dir():
+        return False, f"Target is not a directory: {target_dir}"
+
+    # Validate target is under /home/pi/Pictures
+    pictures_dir = Path.home() / "Pictures"
+    try:
+        target_path.relative_to(pictures_dir)
+    except ValueError:
+        return False, f"Target must be under {pictures_dir}"
+
+    try:
+        # Remove existing symlink if it exists
+        if frame_live.exists() or frame_live.is_symlink():
+            frame_live.unlink()
+
+        # Create new symlink
+        frame_live.symlink_to(target_path)
+
+        return True, None
+
+    except Exception as e:
+        return False, f"Failed to update symlink: {str(e)}"

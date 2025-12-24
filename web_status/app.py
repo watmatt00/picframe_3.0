@@ -16,6 +16,8 @@ from status_backend import (
     get_sources_from_conf,
     add_source_to_conf,
     delete_source_from_conf,
+    get_frame_live_target,
+    set_frame_live_target,
     validate_source_data,
     _get_paths,
 )
@@ -467,6 +469,49 @@ def api_delete_source():
         return jsonify({"ok": False, "error": "Source ID is required"}), 400
 
     success, error = delete_source_from_conf(source_id)
+
+    if success:
+        return jsonify({"ok": True})
+    else:
+        return jsonify({"ok": False, "error": error}), 500
+
+
+@app.route("/api/frame-live")
+def api_get_frame_live():
+    """
+    Get the current frame_live symlink target.
+
+    Response:
+        {
+            "exists": bool,
+            "is_symlink": bool,
+            "target": str,
+            "target_name": str
+        }
+    """
+    result = get_frame_live_target()
+    return jsonify(result)
+
+
+@app.route("/api/frame-live", methods=["POST"])
+def api_set_frame_live():
+    """
+    Set the frame_live symlink to point to a new directory.
+
+    Request body: {
+        "target_dir": "/home/pi/Pictures/kfr_frame"
+    }
+
+    Response:
+        {"ok": true} or {"ok": false, "error": "..."}
+    """
+    data = request.json or {}
+    target_dir = data.get("target_dir", "").strip()
+
+    if not target_dir:
+        return jsonify({"ok": False, "error": "Target directory is required"}), 400
+
+    success, error = set_frame_live_target(target_dir)
 
     if success:
         return jsonify({"ok": True})
