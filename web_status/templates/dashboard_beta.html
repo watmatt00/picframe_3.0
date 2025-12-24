@@ -78,14 +78,35 @@
                         <div class="traffic-light off" id="traffic-red"></div>
                     </div>
                     <div>
-                        <div class="count-row">
-                            <div class="count-tile">
-                                <div class="count-label"><span class="emoji-icon">☁️</span>Cloud Photos</div>
-                                <div class="count-value" id="remote-count">--</div>
+                        <div class="count-row" style="display: flex; align-items: flex-start; gap: 1rem;">
+                            <div style="flex: 0 0 auto;">
+                                <div class="count-tile">
+                                    <div class="count-label"><span class="emoji-icon">☁️</span>Cloud Photos</div>
+                                    <div class="count-value" id="remote-count">--</div>
+                                </div>
+                                <div class="count-tile" style="margin-top: 0.5rem;">
+                                    <div class="count-label"><span class="emoji-icon">🖼️</span>Frame Photos</div>
+                                    <div class="count-value" id="local-count">--</div>
+                                </div>
                             </div>
-                            <div class="count-tile">
-                                <div class="count-label"><span class="emoji-icon">🖼️</span>Frame Photos</div>
-                                <div class="count-value" id="local-count">--</div>
+
+                            <!-- Current Image Thumbnail -->
+                            <div style="flex: 1; text-align: center;">
+                                <div style="font-size: 0.875rem; color: #94a3b8; margin-bottom: 0.5rem;">
+                                    <span class="emoji-icon">🖼️</span>Current Image
+                                </div>
+                                <img id="current-image-thumbnail"
+                                     src="/api/current-image"
+                                     alt="Current frame image"
+                                     style="max-width: 100%; max-height: 200px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); cursor: pointer;"
+                                     onclick="window.open('http://localhost:9000/current_image', '_blank')"
+                                     onerror="this.style.display='none'; document.getElementById('image-error').style.display='block';">
+                                <div id="image-error" style="display: none; color: #f87171; font-size: 0.875rem; margin-top: 0.5rem;">
+                                    Unable to load current image
+                                </div>
+                                <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;">
+                                    Click image to view full size
+                                </div>
                             </div>
                         </div>
 
@@ -103,27 +124,6 @@
                             <div class="service-value">
                                 <span class="status-dot" id="web-status-dot"></span>
                                 <span id="web-status-text">UNKNOWN</span>
-                            </div>
-                        </div>
-
-                        <!-- Current Image Thumbnail -->
-                        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
-                            <div style="text-align: center;">
-                                <div style="font-size: 0.875rem; color: #94a3b8; margin-bottom: 0.5rem;">
-                                    <span class="emoji-icon">🖼️</span>Current Image
-                                </div>
-                                <img id="current-image-thumbnail"
-                                     src="/api/current-image"
-                                     alt="Current frame image"
-                                     style="max-width: 100%; max-height: 300px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); cursor: pointer;"
-                                     onclick="window.open('http://kframe.local:9000/current_image', '_blank')"
-                                     onerror="this.style.display='none'; document.getElementById('image-error').style.display='block';">
-                                <div id="image-error" style="display: none; color: #f87171; font-size: 0.875rem; margin-top: 0.5rem;">
-                                    Unable to load current image
-                                </div>
-                                <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;">
-                                    Click image to view full size
-                                </div>
                             </div>
                         </div>
                     </div>
