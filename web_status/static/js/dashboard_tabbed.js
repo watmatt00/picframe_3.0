@@ -82,9 +82,18 @@ function initStatusDashboard() {
     const btnRunD = document.getElementById("btn-run-d");
     const btnRunDSpinner = document.getElementById("btn-run-d-spinner");
     const btnRunDLabel = document.getElementById("btn-run-d-label");
+    const btnRestartPf = document.getElementById("btn-restart-pf");
+    const btnRestartPfSpinner = document.getElementById("btn-restart-pf-spinner");
+    const btnRestartPfLabel = document.getElementById("btn-restart-pf-label");
+    const btnRestartWeb = document.getElementById("btn-restart-web");
+    const btnRestartWebSpinner = document.getElementById("btn-restart-web-spinner");
+    const btnRestartWebLabel = document.getElementById("btn-restart-web-label");
     const logToggle = document.getElementById("log-toggle");
 
-    let logVisible = true;
+    let logVisible = false;
+
+    // Initialize log as hidden
+    logTailEl.style.display = "none";
 
     logToggle.addEventListener("click", () => {
         logVisible = !logVisible;
@@ -203,8 +212,58 @@ function initStatusDashboard() {
         }
     }
 
+    async function restartPfService() {
+        btnRestartPf.disabled = true;
+        btnRestartPfSpinner.style.display = "inline-block";
+        btnRestartPfLabel.textContent = "Restarting…";
+        try {
+            const resp = await fetch("/api/restart-pf", { method: "POST" });
+            const data = await resp.json();
+            if (data.ok) {
+                alert("Picframe service restarted successfully!\n\n" + (data.output || ""));
+                await refreshStatus();
+            } else {
+                alert("Failed to restart Picframe service:\n\n" + (data.output || "Error"));
+            }
+        } catch (err) {
+            console.error("Failed to restart Picframe service", err);
+            alert("Error restarting Picframe service: " + err);
+        } finally {
+            btnRestartPf.disabled = false;
+            btnRestartPfSpinner.style.display = "none";
+            btnRestartPfLabel.textContent = "Restart Picframe Service";
+        }
+    }
+
+    async function restartWebService() {
+        btnRestartWeb.disabled = true;
+        btnRestartWebSpinner.style.display = "inline-block";
+        btnRestartWebLabel.textContent = "Restarting…";
+        try {
+            const resp = await fetch("/api/restart-web", { method: "POST" });
+            const data = await resp.json();
+            if (data.ok) {
+                alert("Web service restarted successfully!\n\nNote: This page may reload or become temporarily unavailable.\n\n" + (data.output || ""));
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } else {
+                alert("Failed to restart web service:\n\n" + (data.output || "Error"));
+            }
+        } catch (err) {
+            console.error("Failed to restart web service", err);
+            alert("Error restarting web service: " + err);
+        } finally {
+            btnRestartWeb.disabled = false;
+            btnRestartWebSpinner.style.display = "none";
+            btnRestartWebLabel.textContent = "Restart Web Service";
+        }
+    }
+
     btnRefresh.addEventListener("click", refreshStatus);
     btnRunD.addEventListener("click", runChkSyncD);
+    btnRestartPf.addEventListener("click", restartPfService);
+    btnRestartWeb.addEventListener("click", restartWebService);
 
     // Settings functionality
     const settingsToggle = document.getElementById("settings-toggle");

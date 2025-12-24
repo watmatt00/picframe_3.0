@@ -109,6 +109,17 @@
                         </button>
                     </div>
 
+                    <div class="button-row">
+                        <button class="btn" id="btn-restart-pf">
+                            <div class="btn-spinner" id="btn-restart-pf-spinner" style="display:none;"></div>
+                            <span id="btn-restart-pf-label">Restart Picframe Service</span>
+                        </button>
+                        <button class="btn" id="btn-restart-web">
+                            <div class="btn-spinner" id="btn-restart-web-spinner" style="display:none;"></div>
+                            <span id="btn-restart-web-label">Restart Web Service</span>
+                        </button>
+                    </div>
+
                     <div class="pill-stack-row">
                         <div class="pill-block">
                             <div class="pill-block-label">Last run</div>
@@ -126,7 +137,7 @@
 
                     <div class="log-section-header">
                         <span>Log tail (from frame_sync.log)</span>
-                        <button class="log-toggle" id="log-toggle">Hide log ▾</button>
+                        <button class="log-toggle" id="log-toggle">Show log ▸</button>
                     </div>
                     <div class="log-text" id="log-tail"></div>
 

@@ -13,6 +13,8 @@ from flask import Flask, jsonify, render_template, request, Response
 from status_backend import (
     get_status_payload,
     run_chk_sync_detailed,
+    run_restart_pf_service,
+    run_restart_web_service,
     get_sources_from_conf,
     add_source_to_conf,
     delete_source_from_conf,
@@ -82,6 +84,20 @@ def api_run_check():
 @app.route("/api/run-chk-syncd", methods=["POST"])
 def api_run_chk_syncd():
     result = run_chk_sync_detailed()
+    return jsonify(result)
+
+
+@app.route("/api/restart-pf", methods=["POST"])
+def api_restart_pf():
+    """Trigger pf_restart_svc.sh and return its output as JSON."""
+    result = run_restart_pf_service()
+    return jsonify(result)
+
+
+@app.route("/api/restart-web", methods=["POST"])
+def api_restart_web():
+    """Trigger pf_web_restart_svc.sh and return its output as JSON."""
+    result = run_restart_web_service()
     return jsonify(result)
 
 

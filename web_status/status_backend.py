@@ -483,6 +483,84 @@ def run_chk_sync_detailed():
         }
 
 
+def run_restart_pf_service():
+    """
+    Run pf_restart_svc.sh and return its stdout/stderr.
+    """
+    paths = _get_paths()
+    app_root = paths["app_root"]
+    restart_script = app_root / "app_control" / "pf_restart_svc.sh"
+
+    env = os.environ.copy()
+    env.setdefault("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
+
+    try:
+        result = subprocess.run(
+            [str(restart_script)],
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=60,
+            env=env,
+        )
+        output = ""
+        if result.stdout:
+            output += result.stdout
+        if result.stderr:
+            if output:
+                output += "\n"
+            output += result.stderr
+
+        return {
+            "ok": (result.returncode == 0),
+            "output": output,
+        }
+    except Exception as e:
+        return {
+            "ok": False,
+            "output": f"Error running pf_restart_svc.sh: {e}",
+        }
+
+
+def run_restart_web_service():
+    """
+    Run pf_web_restart_svc.sh and return its stdout/stderr.
+    """
+    paths = _get_paths()
+    app_root = paths["app_root"]
+    restart_script = app_root / "app_control" / "pf_web_restart_svc.sh"
+
+    env = os.environ.copy()
+    env.setdefault("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
+
+    try:
+        result = subprocess.run(
+            [str(restart_script)],
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=60,
+            env=env,
+        )
+        output = ""
+        if result.stdout:
+            output += result.stdout
+        if result.stderr:
+            if output:
+                output += "\n"
+            output += result.stderr
+
+        return {
+            "ok": (result.returncode == 0),
+            "output": output,
+        }
+    except Exception as e:
+        return {
+            "ok": False,
+            "output": f"Error running pf_web_restart_svc.sh: {e}",
+        }
+
+
 # ---------------------------------------------------------------------------
 # Source helpers (for API endpoints)
 # ---------------------------------------------------------------------------
