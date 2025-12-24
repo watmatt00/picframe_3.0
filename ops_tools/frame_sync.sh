@@ -39,13 +39,20 @@ fi
 # -------------------------------------------------------------------
 # CONFIGURATION (from config file)
 # -------------------------------------------------------------------
-# RCLONE_REMOTE - loaded from config
-# LOCAL_DIR - loaded from config
 # LOG_DIR - loaded from config
 # LOG_FILE - derived in config_loader.sh
 
-# Map config names to script variables
-LDIR="$LOCAL_DIR"
+# Save the global RCLONE_REMOTE from config as fallback for sources without their own remote
+GLOBAL_RCLONE_REMOTE="${RCLONE_REMOTE:-}"
+
+# These will be set dynamically by detect_active_source()
+RCLONE_REMOTE=""
+LDIR=""
+ACTIVE_SOURCE_ID=""
+ACTIVE_SOURCE_LABEL=""
+
+# Frame live symlink path
+FRAME_LIVE="${FRAME_LIVE_PATH:-/home/pi/Pictures/frame_live}"
 
 # Optional safe-mode flag for consecutive restart detection
 SAFE_MODE_FILE="${APP_ROOT}/ops_tools/safe_mode.flag"
@@ -73,7 +80,62 @@ log_message() {
 
 ensure_directories() {
     mkdir -p "$LOG_DIR"
-    mkdir -p "$LDIR"
+    # Note: LDIR will be set by detect_active_source(), so we create it later
+}
+
+# -------------------------------------------------------------------
+# SOURCE DETECTION (dynamic from frame_sources.conf)
+# -------------------------------------------------------------------
+detect_active_source() {
+    local target=""
+    local conf_file="${FRAME_SOURCES_CONF:-${APP_ROOT}/config/frame_sources.conf}"
+
+    # Get the symlink target
+    if [[ -L "$FRAME_LIVE" ]]; then
+        target=$(readlink -f "$FRAME_LIVE" 2>/dev/null || true)
+    fi
+
+    if [[ -z "$target" ]]; then
+        ACTIVE_SOURCE_ID="unknown"
+        ACTIVE_SOURCE_LABEL="frame_live not found or not a symlink"
+        log_message "ERROR: $ACTIVE_SOURCE_LABEL"
+        return 1
+    fi
+
+    # Search frame_sources.conf for matching path
+    if [[ -f "$conf_file" ]]; then
+        while IFS='|' read -r sid label path enabled remote || [[ -n "$sid" ]]; do
+            # Skip comments and empty lines
+            [[ -z "$sid" || "$sid" =~ ^# ]] && continue
+
+            if [[ "$target" == "$path" ]]; then
+                ACTIVE_SOURCE_ID="$sid"
+                ACTIVE_SOURCE_LABEL="$sid - $label"
+                LDIR="$path"
+                # Use remote from source config (5th field) if available,
+                # otherwise fall back to global RCLONE_REMOTE from user config
+                if [[ -n "${remote:-}" ]]; then
+                    RCLONE_REMOTE="$remote"
+                else
+                    RCLONE_REMOTE="$GLOBAL_RCLONE_REMOTE"
+                fi
+                log_message "Detected active source: $ACTIVE_SOURCE_LABEL"
+                log_message "  Remote: $RCLONE_REMOTE"
+                log_message "  Local:  $LDIR"
+                return 0
+            fi
+        done < "$conf_file"
+    fi
+
+    # No match found in config - use global remote as fallback
+    ACTIVE_SOURCE_ID="unknown"
+    ACTIVE_SOURCE_LABEL="unknown source backing: $target"
+    LDIR="$target"
+    RCLONE_REMOTE="$GLOBAL_RCLONE_REMOTE"
+    log_message "WARNING: Active source not found in config, using fallback"
+    log_message "  Remote: $RCLONE_REMOTE"
+    log_message "  Local:  $LDIR"
+    return 1
 }
 
 # -------------------------------------------------------------------
@@ -293,6 +355,17 @@ detailed_mode_flow() {
 # -------------------------------------------------------------------
 main() {
     ensure_directories
+
+    # Detect which source is currently active
+    if ! detect_active_source; then
+        log_message "ERROR: Failed to detect active source. Cannot proceed with sync."
+        log_message "SYNC_RESULT: ERROR"
+        exit 1
+    fi
+
+    # Ensure the local directory exists
+    mkdir -p "$LDIR"
+
     check_rclone_installed
     check_rclone_config
 
