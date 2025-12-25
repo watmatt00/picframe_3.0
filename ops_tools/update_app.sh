@@ -36,6 +36,18 @@ fi
 
 cd "$REPO_DIR"
 
+# Initialize config files from templates if they don't exist
+initialize_configs() {
+    local config_file="$REPO_DIR/config/frame_sources.conf"
+    local template_file="$REPO_DIR/config/frame_sources.conf.example"
+
+    if [[ ! -f "$config_file" && -f "$template_file" ]]; then
+        log_message "First run: Creating config/frame_sources.conf from template..."
+        cp "$template_file" "$config_file"
+        log_message "Config file created. Edit it to add your photo sources."
+    fi
+}
+
 # Update repo from origin/main
 log_message "Fetching latest changes from origin..."
 if git fetch --all >>"$LOG_FILE" 2>&1; then
@@ -45,13 +57,17 @@ else
     exit 1
 fi
 
-log_message "Resetting local branch to origin/main..."
-if git reset --hard origin/main >>"$LOG_FILE" 2>&1; then
-    log_message "git reset --hard origin/main completed."
+log_message "Updating code with git pull (preserving local configs)..."
+# Use pull instead of reset --hard to preserve local changes to ignored files
+if git pull --rebase origin main >>"$LOG_FILE" 2>&1; then
+    log_message "git pull completed successfully."
 else
-    log_message "git reset --hard origin/main failed."
+    log_message "git pull failed or had conflicts. Manual intervention may be needed."
     exit 1
 fi
+
+# Initialize configs if needed (for first-time setup)
+initialize_configs
 
 # Clean up any stale Python bytecode in the web_status app
 cleanup_pycache

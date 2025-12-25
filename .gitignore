@@ -21,3 +21,7 @@ venv/
 .DS_Store
 Thumbs.db
 
+# Local configuration files (user-specific, not version controlled)
+# Templates (.example files) ARE version controlled
+config/frame_sources.conf
+

@@ -1,5 +1,7 @@
 # -------------------------------------------------------------------
-# frame_sources.conf
+# frame_sources.conf.example
+#
+# TEMPLATE FILE - Copy this to frame_sources.conf and customize for your setup
 #
 # Defines all available photo sources for PicFrame.
 # Format for each source:
@@ -17,13 +19,14 @@
 #   - You can add as many sources as you want — no script changes needed.
 #   - Disabled sources still show up in the menu but cannot be selected.
 #   - If rclone_remote is omitted, the global RCLONE_REMOTE from config is used.
+#   - Add your sources via the dashboard or manually edit this file
 # -------------------------------------------------------------------
 
-gdt|Google Drive (gdt_frame)|/home/pi/Pictures/gdt_frame|1|kfgdrive:dframe
-kfr|Koofr (kfr_frame)|/home/pi/Pictures/kfr_frame|1|kfrphotos:KFR_kframe
-kfr_dbd|Koofr DBD|/home/pi/Pictures/kfr_dbd|1|kfrphotos:KFR_dbd
+# Example sources (uncomment and customize):
+# gdt|Google Drive Photos|/home/pi/Pictures/gdt_frame|1|gdrive:photos
+# kfr|Koofr Photos|/home/pi/Pictures/kfr_frame|1|koofr:MyPhotos
 
-# Example future sources:
+# Additional example sources:
 # usb|USB Flash Drive|/mnt/usb/frame|0|
 # nas|NAS Family Photos|/mnt/nas/photos|0|
 # drop|Dropbox Export|/mnt/dropbox/frame|0|dropbox:frame
