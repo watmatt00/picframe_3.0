@@ -1,0 +1,1201 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>PicFrame Sync Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <style>
+        :root {
+            color-scheme: dark;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: radial-gradient(circle at top left, #1b2238 0, #050712 40%, #020308 100%);
+            color: #f9fafb;
+        }
+        .page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            padding: 0.75rem 1.75rem;
+            background: linear-gradient(90deg, #0b7a39, #059669);
+            font-size: 0.9rem;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        header .status-text {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        header .status-pill {
+            padding: 0.15rem 0.6rem;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.18);
+            font-size: 0.75rem;
+        }
+        main {
+            flex: 1;
+            padding: 1.5rem 1.75rem 2.5rem 1.75rem;
+        }
+        .top-row {
+            display: flex;
+            gap: 1.5rem;
+            align-items: flex-start;
+        }
+        .card {
+            border-radius: 1.25rem;
+            background: radial-gradient(circle at top left, rgba(148, 163, 184, 0.18), rgba(15, 23, 42, 0.96));
+            box-shadow:
+                0 24px 60px rgba(15, 23, 42, 0.8),
+                0 0 0 1px rgba(15, 23, 42, 0.7);
+            padding: 1.5rem 1.75rem 1.5rem 1.75rem;
+        }
+        .overall-card {
+            flex: 1.15;
+        }
+        .tools-card {
+            flex: 0.85;
+        }
+        .card-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 1.5rem;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 1rem;
+        }
+        .card-title {
+            font-size: 1.6rem;
+            font-weight: 650;
+            letter-spacing: 0.03em;
+        }
+        .host-pill {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.65rem;
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-weight: 600;
+        }
+        .host-pill span {
+            opacity: 0.7;
+        }
+        .meta-line {
+            margin-top: 0.35rem;
+            font-size: 0.78rem;
+            opacity: 0.7;
+        }
+        .overall-inner {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 1.5rem;
+            align-items: center;
+        }
+        .traffic-rail {
+            width: 52px;
+            height: 140px;
+            border-radius: 30px;
+            background: radial-gradient(circle at top, #020617, #020617 40%, #020617 100%);
+            box-shadow:
+                inset 0 0 0 1px rgba(15, 23, 42, 0.9),
+                0 0 0 1px rgba(15, 23, 42, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 0.8rem;
+            padding: 0.75rem 0;
+        }
+        .traffic-light {
+            width: 26px;
+            height: 26px;
+            border-radius: 999px;
+        }
+        .traffic-light.off {
+            background: radial-gradient(circle at 30% 20%, #0f172a, #020617 60%, #000);
+            box-shadow:
+                inset 0 0 0 1px rgba(15, 23, 42, 0.8);
+        }
+        #traffic-green:not(.off) {
+            background: radial-gradient(circle at 30% 20%, #22c55e, #16a34a 60%, #14532d);
+            box-shadow:
+                0 0 15px rgba(34, 197, 94, 0.7),
+                inset 0 0 0 1px rgba(22, 163, 74, 0.9);
+        }
+        #traffic-amber:not(.off) {
+            background: radial-gradient(circle at 30% 20%, #fbbf24, #f59e0b 60%, #78350f);
+            box-shadow:
+                0 0 15px rgba(251, 191, 36, 0.7),
+                inset 0 0 0 1px rgba(245, 158, 11, 0.9);
+        }
+        #traffic-red:not(.off) {
+            background: radial-gradient(circle at 30% 20%, #ef4444, #dc2626 60%, #7f1d1d);
+            box-shadow:
+                0 0 15px rgba(239, 68, 68, 0.7),
+                inset 0 0 0 1px rgba(220, 38, 38, 0.9);
+        }
+        .status-label {
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .status-chip {
+            font-size: 0.78rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+            background: rgba(22, 163, 74, 0.12);
+            border: 1px solid rgba(22, 163, 74, 0.6);
+        }
+        .status-chip.error {
+            background: rgba(220, 38, 38, 0.12);
+            border-color: rgba(248, 113, 113, 0.6);
+        }
+        .status-chip.warn {
+            background: rgba(234, 179, 8, 0.12);
+            border-color: rgba(250, 204, 21, 0.6);
+        }
+        .count-row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.9rem;
+            margin-top: 1rem;
+        }
+        .count-tile {
+            padding: 0.85rem 1rem;
+            border-radius: 0.9rem;
+            background: radial-gradient(circle at top left, rgba(30, 64, 175, 0.3), rgba(15, 23, 42, 0.96));
+            box-shadow:
+                0 18px 40px rgba(15, 23, 42, 0.8),
+                0 0 0 1px rgba(15, 23, 42, 0.7);
+        }
+        .count-label {
+            font-size: 0.74rem;
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+            opacity: 0.76;
+            margin-bottom: 0.25rem;
+        }
+        .count-value {
+            font-size: 1.35rem;
+            font-variant-numeric: tabular-nums;
+            font-weight: 650;
+        }
+        .service-grid {
+            display: grid;
+            grid-template-columns: auto auto;
+            column-gap: 0.75rem;
+            row-gap: 0.35rem;
+            margin-top: 1.2rem;
+            font-size: 0.9rem;
+        }
+        .service-label {
+            opacity: 0.75;
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+            font-size: 0.72rem;
+        }
+        .service-value {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+        .status-dot {
+            width: 0.55rem;
+            height: 0.55rem;
+            border-radius: 999px;
+            background: #22c55e;
+            box-shadow: 0 0 6px rgba(34, 197, 94, 0.75);
+        }
+        .status-dot.off {
+            background: #6b7280;
+            box-shadow: none;
+        }
+        .remote-label {
+            font-size: 0.88rem;
+        }
+        .tools-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .tools-title {
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+        .tools-subtitle {
+            font-size: 0.7rem;
+            opacity: 0.65;
+        }
+        .button-row {
+            display: flex;
+            gap: 0.6rem;
+            margin-bottom: 1.1rem;
+        }
+        button {
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .btn {
+            font-size: 0.8rem;
+            padding: 0.5rem 0.9rem;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-weight: 500;
+            background: radial-gradient(circle at top left, #2563eb, #1d4ed8);
+            color: #e5f3ff;
+            box-shadow:
+                0 14px 28px rgba(37, 99, 235, 0.6),
+                0 0 0 1px rgba(30, 64, 175, 0.9);
+        }
+        .btn.secondary {
+            background: radial-gradient(circle at top left, #111827, #020617);
+            color: #e5e7eb;
+            box-shadow:
+                0 14px 26px rgba(15, 23, 42, 0.7),
+                0 0 0 1px rgba(55, 65, 81, 0.9);
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: default;
+            box-shadow: none;
+        }
+        .btn-spinner {
+            width: 0.85rem;
+            height: 0.85rem;
+            border-radius: 999px;
+            border: 2px solid rgba(191, 219, 254, 0.5);
+            border-top-color: transparent;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .pill-stack-row {
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+            margin-bottom: 1.1rem;
+        }
+        .pill-block {
+            padding: 0.6rem 0.75rem;
+            border-radius: 0.7rem;
+            background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.96), rgba(3, 7, 18, 1));
+        }
+        .pill-block-label {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+            margin-bottom: 0.18rem;
+        }
+        .pill-block-value {
+            font-size: 0.86rem;
+            font-variant-numeric: tabular-nums;
+        }
+        .log-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.3rem;
+            margin-top: 0.7rem;
+            font-size: 0.74rem;
+            text-transform: uppercase;
+            letter-spacing: 0.17em;
+            opacity: 0.78;
+        }
+        .log-text {
+            margin-top: 0.4rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.72rem;
+            line-height: 1.5;
+            max-height: 8.5rem;
+            overflow: auto;
+            padding: 0.55rem 0.7rem;
+            border-radius: 0.6rem;
+            background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.96), rgba(3, 7, 18, 1));
+            border: 1px solid rgba(31, 41, 55, 0.8);
+            white-space: pre-wrap;
+        }
+        .log-toggle {
+            font-size: 0.72rem;
+            padding: 0.3rem 0.65rem;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(55, 65, 81, 0.9);
+            color: #e5e7eb;
+            cursor: pointer;
+        }
+        .dev-warning-banner {
+            background: linear-gradient(90deg, #dc2626, #b91c1c);
+            color: #ffffff;
+            padding: 0.85rem 1.75rem;
+            text-align: center;
+            font-weight: 700;
+            font-size: 0.95rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.5);
+            border-bottom: 3px solid #991b1b;
+        }
+        footer {
+            font-size: 0.72rem;
+            opacity: 0.55;
+            padding: 0.35rem 1.75rem 0.75rem 1.75rem;
+        }
+        @media (max-width: 900px) {
+            .top-row {
+                flex-direction: column;
+            }
+            .overall-card, .tools-card {
+                width: 100%;
+            }
+        }
+        /* Settings Form Styles */
+        .settings-card {
+            margin-top: 1.5rem;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-label {
+            display: block;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            opacity: 0.8;
+            margin-bottom: 0.35rem;
+        }
+        .form-input, .form-select {
+            width: 100%;
+            padding: 0.6rem 0.8rem;
+            font-size: 0.9rem;
+            font-family: inherit;
+            background: rgba(15, 23, 42, 0.96);
+            border: 1px solid rgba(55, 65, 81, 0.9);
+            border-radius: 0.5rem;
+            color: #f9fafb;
+        }
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: rgba(59, 130, 246, 0.8);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+        .form-input::placeholder {
+            color: #6b7280;
+        }
+        .form-hint {
+            font-size: 0.7rem;
+            color: #6b7280;
+            margin-top: 0.25rem;
+        }
+        .form-select {
+            cursor: pointer;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        .settings-status {
+            margin-top: 1rem;
+            padding: 0.6rem 0.8rem;
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+        }
+        .settings-status.success {
+            background: rgba(22, 163, 74, 0.15);
+            border: 1px solid rgba(22, 163, 74, 0.5);
+            color: #86efac;
+        }
+        .settings-status.error {
+            background: rgba(220, 38, 38, 0.15);
+            border: 1px solid rgba(248, 113, 113, 0.5);
+            color: #fca5a5;
+        }
+        /* Setup Wizard Modal Styles */
+        .wizard-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .wizard-modal {
+            background: radial-gradient(circle at top left, rgba(148, 163, 184, 0.18), rgba(15, 23, 42, 0.98));
+            border-radius: 1.25rem;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8);
+        }
+        .wizard-header h2 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.5rem;
+        }
+        .wizard-header p {
+            margin: 0;
+            opacity: 0.7;
+            font-size: 0.9rem;
+        }
+        .wizard-body {
+            margin: 1.5rem 0;
+        }
+        .wizard-step h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.1rem;
+        }
+        .wizard-step p {
+            margin: 0 0 1rem 0;
+            font-size: 0.85rem;
+            opacity: 0.8;
+        }
+        .wizard-footer {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+        }
+        .wizard-test-status {
+            margin-top: 0.75rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+    <div class="dev-warning-banner">
+        ⚠️ Development Access ONLY. Add Auth ASAP ⚠️
+    </div>
+    <header id="top-banner">
+        <div class="status-text">
+            <span id="banner-text">Last sync status</span>
+            <span class="status-pill" id="banner-pill">--</span>
+        </div>
+        <div id="banner-updated">Updated: --</div>
+    </header>
+
+    <main>
+        <div class="card-header-top">
+            <div>
+                <div class="card-title">PicFrame Sync Dashboard</div>
+                <div class="meta-line">
+                    Script: {{ script_path }} · Log: {{ log_path }}
+                </div>
+            </div>
+            <div class="host-pill">
+                <span>Host</span>&nbsp; <strong id="host-name">{{ host_name }}</strong>
+            </div>
+        </div>
+
+        <div class="top-row">
+            <!-- Overall status card -->
+            <section class="card overall-card">
+                <div class="card-header">
+                    <div class="status-label">
+                        <span id="overall-title">Status unknown</span>
+                        <span class="status-chip" id="overall-chip">--</span>
+                    </div>
+                </div>
+                <div class="overall-inner">
+                    <div class="traffic-rail">
+                        <div class="traffic-light" id="traffic-green"></div>
+                        <div class="traffic-light off" id="traffic-amber"></div>
+                        <div class="traffic-light off" id="traffic-red"></div>
+                    </div>
+                    <div>
+                        <div class="count-row">
+                            <div class="count-tile">
+                                <div class="count-label">Remote count</div>
+                                <div class="count-value" id="remote-count">--</div>
+                            </div>
+                            <div class="count-tile">
+                                <div class="count-label">Local count</div>
+                                <div class="count-value" id="local-count">--</div>
+                            </div>
+                        </div>
+
+                        <div class="service-grid">
+                            <div class="service-label">Web status service</div>
+                            <div class="service-value">
+                                <span class="status-dot" id="web-status-dot"></span>
+                                <span id="web-status-text">UNKNOWN</span>
+                            </div>
+
+                            <div class="service-label">Picframe service</div>
+                            <div class="service-value">
+                                <span class="status-dot" id="pf-status-dot"></span>
+                                <span id="pf-status-text">UNKNOWN</span>
+                            </div>
+
+                            <div class="service-label">Current remote</div>
+                            <div class="service-value remote-label" id="current-remote">--</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Activity & tools card -->
+            <section class="card tools-card">
+                <div class="tools-card-header">
+                    <div>
+                        <div class="tools-title">Activity &amp; tools</div>
+                        <div class="tools-subtitle">Uses log; chk_sync.sh on demand</div>
+                    </div>
+                </div>
+
+                <div class="button-row">
+                    <button class="btn secondary" id="btn-refresh">
+                        <span id="btn-refresh-icon">⟳</span>
+                        <span>Refresh from log</span>
+                    </button>
+                    <button class="btn" id="btn-run-d">
+                        <div class="btn-spinner" id="btn-run-d-spinner" style="display:none;"></div>
+                        <span id="btn-run-d-label">Run chk_sync.sh --d</span>
+                    </button>
+                </div>
+
+                <div class="pill-stack-row">
+                    <div class="pill-block">
+                        <div class="pill-block-label">Last run</div>
+                        <div class="pill-block-value" id="last-run">--</div>
+                    </div>
+                    <div class="pill-block">
+                        <div class="pill-block-label">Last service restart</div>
+                        <div class="pill-block-value" id="last-restart">--</div>
+                    </div>
+                    <div class="pill-block">
+                        <div class="pill-block-label">Last file download</div>
+                        <div class="pill-block-value" id="last-download">--</div>
+                    </div>
+                </div>
+
+                <div class="log-section-header">
+                    <span>Log tail (from frame_sync.log)</span>
+                    <button class="log-toggle" id="log-toggle">Hide log ▾</button>
+                </div>
+                <div class="log-text" id="log-tail"></div>
+
+                <div class="log-section-header" style="margin-top: 0.9rem;">
+                    <span>chk_sync.sh -d output</span>
+                </div>
+                <div class="log-text" id="chk-d-output">(not run yet)</div>
+            </section>
+        </div>
+
+        <!-- Settings Card -->
+        <section class="card settings-card" id="settings-card">
+            <div class="tools-card-header">
+                <div>
+                    <div class="tools-title">Configuration</div>
+                    <div class="tools-subtitle">Sync settings for this device</div>
+                </div>
+                <button class="log-toggle" id="settings-toggle">Collapse</button>
+            </div>
+
+            <div id="settings-body">
+                <div class="form-group">
+                    <label class="form-label">Photo Source</label>
+                    <select id="cfg-source" class="form-select">
+                        <option value="">Loading sources...</option>
+                    </select>
+                    <div class="form-hint">Select which photo source to sync from</div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Rclone Remote</label>
+                    <input type="text" id="cfg-rclone-remote" class="form-input" 
+                           placeholder="mydrive:photos">
+                    <div class="form-hint">Format: remotename:path (run 'rclone config' to set up)</div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Local Photo Directory</label>
+                        <input type="text" id="cfg-local-dir" class="form-input"
+                               placeholder="/home/pi/Pictures/frame">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Log Directory</label>
+                        <input type="text" id="cfg-log-dir" class="form-input"
+                               placeholder="/home/pi/logs">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">App Root Directory</label>
+                        <input type="text" id="cfg-app-root" class="form-input"
+                               placeholder="/home/pi/picframe_3.0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Device Hostname</label>
+                        <input type="text" id="cfg-hostname" class="form-input"
+                               placeholder="(leave empty to disable check)">
+                        <div class="form-hint">Optional: restrict scripts to this host</div>
+                    </div>
+                </div>
+
+                <div class="button-row" style="margin-top: 1rem;">
+                    <button class="btn" id="btn-save-config">Save Settings</button>
+                    <button class="btn secondary" id="btn-test-remote">Test Connection</button>
+                    <button class="btn secondary" id="btn-export-config">Export Config</button>
+                </div>
+
+                <div id="settings-status" class="settings-status" style="display:none;"></div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        Auto-refreshes every 15 seconds · Designed for Pi on your LAN
+    </footer>
+</div>
+
+<!-- Setup Wizard Modal (shows on first run when no config exists) -->
+<div id="setup-wizard-overlay" class="wizard-overlay" style="display:none;">
+    <div class="wizard-modal">
+        <div class="wizard-header">
+            <h2>Welcome to PicFrame</h2>
+            <p>Let's configure your photo frame in a few quick steps.</p>
+        </div>
+        
+        <div class="wizard-body">
+            <!-- Step 1: Rclone Remote -->
+            <div class="wizard-step" id="wizard-step-1">
+                <h3>Step 1: Rclone Remote</h3>
+                <p>Enter your rclone remote path. If you haven't set up rclone yet, run <code>rclone config</code> in a terminal first.</p>
+                <div class="form-group">
+                    <input type="text" id="wiz-remote" class="form-input" placeholder="mydrive:photos">
+                </div>
+                <button class="btn secondary" id="wiz-test">Test Connection</button>
+                <div id="wiz-test-status" class="wizard-test-status settings-status" style="display:none;"></div>
+            </div>
+            
+            <!-- Step 2: Local Directory -->
+            <div class="wizard-step" id="wizard-step-2" style="display:none;">
+                <h3>Step 2: Local Directory</h3>
+                <p>Where should synced photos be stored on this device?</p>
+                <div class="form-group">
+                    <input type="text" id="wiz-local-dir" class="form-input" value="/home/pi/Pictures/frame">
+                </div>
+            </div>
+            
+            <!-- Step 3: Confirm -->
+            <div class="wizard-step" id="wizard-step-3" style="display:none;">
+                <h3>Step 3: Confirm Settings</h3>
+                <p>Review your configuration:</p>
+                <div class="pill-block" style="margin-bottom:0.5rem;">
+                    <div class="pill-block-label">Rclone Remote</div>
+                    <div class="pill-block-value" id="wiz-confirm-remote">--</div>
+                </div>
+                <div class="pill-block">
+                    <div class="pill-block-label">Local Directory</div>
+                    <div class="pill-block-value" id="wiz-confirm-local">--</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="wizard-footer">
+            <button class="btn secondary" id="wiz-back" style="display:none;">Back</button>
+            <button class="btn" id="wiz-next">Next</button>
+            <button class="btn" id="wiz-finish" style="display:none;">Finish Setup</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const bannerText = document.getElementById("banner-text");
+    const bannerPill = document.getElementById("banner-pill");
+    const bannerUpdated = document.getElementById("banner-updated");
+    const topBanner = document.getElementById("top-banner");
+
+    const overallTitle = document.getElementById("overall-title");
+    const overallChip = document.getElementById("overall-chip");
+
+    const trafficGreen = document.getElementById("traffic-green");
+    const trafficAmber = document.getElementById("traffic-amber");
+    const trafficRed = document.getElementById("traffic-red");
+
+    const remoteCountEl = document.getElementById("remote-count");
+    const localCountEl = document.getElementById("local-count");
+
+    const webDot = document.getElementById("web-status-dot");
+    const webText = document.getElementById("web-status-text");
+    const pfDot = document.getElementById("pf-status-dot");
+    const pfText = document.getElementById("pf-status-text");
+    const currentRemoteEl = document.getElementById("current-remote");
+
+    const lastRunEl = document.getElementById("last-run");
+    const lastRestartEl = document.getElementById("last-restart");
+    const lastDownloadEl = document.getElementById("last-download");
+    const logTailEl = document.getElementById("log-tail");
+    const chkDOutputEl = document.getElementById("chk-d-output");
+
+    const btnRefresh = document.getElementById("btn-refresh");
+    const btnRunD = document.getElementById("btn-run-d");
+    const btnRunDSpinner = document.getElementById("btn-run-d-spinner");
+    const btnRunDLabel = document.getElementById("btn-run-d-label");
+    const logToggle = document.getElementById("log-toggle");
+
+    let logVisible = true;
+
+    logToggle.addEventListener("click", () => {
+        logVisible = !logVisible;
+        logTailEl.style.display = logVisible ? "block" : "none";
+        logToggle.textContent = logVisible ? "Hide log ▾" : "Show log ▸";
+    });
+
+    function setServiceDot(dotEl, textEl, status) {
+        const s = (status || "").toLowerCase();
+        const up = s === "active" || s === "running";
+        dotEl.classList.toggle("off", !up);
+        textEl.textContent = up ? "RUNNING" : (status || "UNKNOWN").toUpperCase();
+    }
+
+    function setTrafficLights(severity) {
+        const sev = (severity || "UNKNOWN").toUpperCase();
+        trafficGreen.classList.add("off");
+        trafficAmber.classList.add("off");
+        trafficRed.classList.add("off");
+
+        if (sev === "OK") {
+            trafficGreen.classList.remove("off");
+        } else if (sev === "WARN") {
+            trafficAmber.classList.remove("off");
+        } else if (sev === "ERROR") {
+            trafficRed.classList.remove("off");
+        } else {
+            trafficAmber.classList.remove("off");
+        }
+    }
+
+    function setBannerForSeverity(severity) {
+        const sev = (severity || "UNKNOWN").toUpperCase();
+        if (sev === "OK") {
+            topBanner.style.background = "linear-gradient(90deg, #0b7a39, #059669)";
+            bannerPill.textContent = "OK";
+        } else if (sev === "WARN") {
+            topBanner.style.background = "linear-gradient(90deg, #92400e, #f97316)";
+            bannerPill.textContent = "WARN";
+        } else if (sev === "ERROR") {
+            topBanner.style.background = "linear-gradient(90deg, #b91c1c, #ef4444)";
+            bannerPill.textContent = "ERROR";
+        } else {
+            topBanner.style.background = "linear-gradient(90deg, #4b5563, #6b7280)";
+            bannerPill.textContent = "UNKNOWN";
+        }
+    }
+
+    async function refreshStatus() {
+        btnRefresh.disabled = true;
+        try {
+            const resp = await fetch("/api/status");
+            const data = await resp.json();
+
+            const nowStr = data.now || "";
+            bannerUpdated.textContent = nowStr ? "Updated: " + nowStr : "Updated: --";
+
+            const overall = data.overall || {};
+            const severity = overall.severity || "UNKNOWN";
+            const statusText = overall.status_text || "Status unknown";
+
+            overallTitle.textContent = statusText;
+            overallChip.textContent = severity;
+            overallChip.classList.remove("error", "warn");
+            if (severity.toUpperCase() === "ERROR") {
+                overallChip.classList.add("error");
+            } else if (severity.toUpperCase() === "WARN") {
+                overallChip.classList.add("warn");
+            }
+            bannerText.textContent = statusText;
+
+            setTrafficLights(severity);
+            setBannerForSeverity(severity);
+
+            const rc = overall.remote_count;
+            const lc = overall.local_count;
+            remoteCountEl.textContent = (rc !== null && rc !== undefined) ? rc : "—";
+            localCountEl.textContent = (lc !== null && lc !== undefined) ? lc : "—";
+
+            setServiceDot(webDot, webText, data.web_status);
+            setServiceDot(pfDot, pfText, data.pf_status);
+
+            currentRemoteEl.textContent = data.current_remote || "--";
+
+            const act = data.activity || {};
+            // If you later add last_run in the backend, this will pick it up.
+            lastRunEl.textContent = act.last_run || nowStr || "—";
+            lastRestartEl.textContent = act.last_service_restart || "—";
+            lastDownloadEl.textContent = act.last_file_download || "—";
+            logTailEl.textContent = (act.log_tail || "").trim() || "(no log data)";
+        } catch (err) {
+            console.error("Failed to refresh status", err);
+            bannerText.textContent = "Error fetching status";
+            setBannerForSeverity("ERROR");
+            overallTitle.textContent = "Status unknown";
+            overallChip.textContent = "ERROR";
+        } finally {
+            btnRefresh.disabled = false;
+        }
+    }
+
+    async function runChkSyncD() {
+        btnRunD.disabled = true;
+        btnRunDSpinner.style.display = "inline-block";
+        btnRunDLabel.textContent = "Running…";
+        try {
+            const resp = await fetch("/api/run-chk-syncd", { method: "POST" });
+            const data = await resp.json();
+            chkDOutputEl.textContent = (data.output || "").trim() || "(no output)";
+        } catch (err) {
+            console.error("Failed to run chk_sync.sh --d", err);
+            chkDOutputEl.textContent = "Error running chk_sync.sh --d: " + err;
+        } finally {
+            btnRunD.disabled = false;
+            btnRunDSpinner.style.display = "none";
+            btnRunDLabel.textContent = "Run chk_sync.sh --d";
+        }
+    }
+
+    document.getElementById("btn-refresh").addEventListener("click", refreshStatus);
+    document.getElementById("btn-run-d").addEventListener("click", runChkSyncD);
+
+    // initial load + auto-refresh
+    refreshStatus();
+    setInterval(refreshStatus, 15000);
+
+    // ============ SETTINGS FUNCTIONALITY ============
+
+    const settingsToggle = document.getElementById("settings-toggle");
+    const settingsBody = document.getElementById("settings-body");
+    const settingsStatus = document.getElementById("settings-status");
+
+    const cfgSource = document.getElementById("cfg-source");
+    const cfgRcloneRemote = document.getElementById("cfg-rclone-remote");
+    const cfgLocalDir = document.getElementById("cfg-local-dir");
+    const cfgLogDir = document.getElementById("cfg-log-dir");
+    const cfgAppRoot = document.getElementById("cfg-app-root");
+    const cfgHostname = document.getElementById("cfg-hostname");
+
+    const btnSaveConfig = document.getElementById("btn-save-config");
+    const btnTestRemote = document.getElementById("btn-test-remote");
+    const btnExportConfig = document.getElementById("btn-export-config");
+
+    let settingsVisible = true;
+
+    // Toggle settings panel
+    settingsToggle.addEventListener("click", () => {
+        settingsVisible = !settingsVisible;
+        settingsBody.style.display = settingsVisible ? "block" : "none";
+        settingsToggle.textContent = settingsVisible ? "Collapse" : "Expand";
+    });
+
+    // Load config on page load
+    async function loadConfig() {
+        try {
+            const resp = await fetch("/api/config");
+            const data = await resp.json();
+            
+            if (data.exists && data.config) {
+                cfgRcloneRemote.value = data.config.RCLONE_REMOTE || "";
+                cfgLocalDir.value = data.config.LOCAL_DIR || "";
+                cfgLogDir.value = data.config.LOG_DIR || "";
+                cfgAppRoot.value = data.config.APP_ROOT || "";
+                cfgHostname.value = data.config.ALLOWED_HOST || "";
+            }
+            
+            await loadSources(data.config?.ACTIVE_SOURCE);
+        } catch (err) {
+            console.error("Failed to load config:", err);
+        }
+    }
+
+    // Load sources into dropdown
+    async function loadSources(activeSource) {
+        try {
+            const resp = await fetch("/api/sources");
+            const data = await resp.json();
+            
+            cfgSource.innerHTML = "";
+            if (data.sources && data.sources.length > 0) {
+                data.sources.forEach(src => {
+                    const opt = document.createElement("option");
+                    opt.value = src.id;
+                    opt.textContent = src.label + (src.enabled ? "" : " (disabled)");
+                    opt.disabled = !src.enabled;
+                    if (src.id === activeSource || src.active) {
+                        opt.selected = true;
+                    }
+                    cfgSource.appendChild(opt);
+                });
+            } else {
+                cfgSource.innerHTML = '<option value="">No sources configured</option>';
+            }
+        } catch (err) {
+            cfgSource.innerHTML = '<option value="">Error loading sources</option>';
+        }
+    }
+
+    // Save config
+    btnSaveConfig.addEventListener("click", async () => {
+        btnSaveConfig.disabled = true;
+        btnSaveConfig.textContent = "Saving...";
+        
+        const payload = {
+            RCLONE_REMOTE: cfgRcloneRemote.value,
+            LOCAL_DIR: cfgLocalDir.value,
+            LOG_DIR: cfgLogDir.value,
+            APP_ROOT: cfgAppRoot.value,
+            ALLOWED_HOST: cfgHostname.value,
+            ACTIVE_SOURCE: cfgSource.value,
+        };
+        
+        try {
+            const resp = await fetch("/api/config", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            const data = await resp.json();
+            
+            if (data.ok) {
+                showSettingsStatus("success", "Settings saved successfully!");
+                // If source changed, trigger source switch
+                if (cfgSource.value) {
+                    await switchSource(cfgSource.value);
+                }
+            } else {
+                showSettingsStatus("error", (data.errors || []).join(", ") || "Failed to save");
+            }
+        } catch (err) {
+            showSettingsStatus("error", "Failed to save: " + err);
+        } finally {
+            btnSaveConfig.disabled = false;
+            btnSaveConfig.textContent = "Save Settings";
+        }
+    });
+
+    // Test remote connection
+    btnTestRemote.addEventListener("click", async () => {
+        btnTestRemote.disabled = true;
+        btnTestRemote.textContent = "Testing...";
+        
+        try {
+            const resp = await fetch("/api/config/test-remote", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ remote: cfgRcloneRemote.value })
+            });
+            const data = await resp.json();
+            
+            if (data.ok) {
+                showSettingsStatus("success", "Connected! Found " + data.file_count + " files.");
+            } else {
+                showSettingsStatus("error", "Connection failed: " + data.error);
+            }
+        } catch (err) {
+            showSettingsStatus("error", "Test failed: " + err);
+        } finally {
+            btnTestRemote.disabled = false;
+            btnTestRemote.textContent = "Test Connection";
+        }
+    });
+
+    // Export config
+    btnExportConfig.addEventListener("click", () => {
+        window.location.href = "/api/config/export";
+    });
+
+    // Switch source
+    async function switchSource(sourceId) {
+        try {
+            await fetch("/api/sources/active", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ source_id: sourceId })
+            });
+        } catch (err) {
+            console.error("Failed to switch source:", err);
+        }
+    }
+
+    // Show status message
+    function showSettingsStatus(type, message) {
+        settingsStatus.className = "settings-status " + type;
+        settingsStatus.textContent = message;
+        settingsStatus.style.display = "block";
+        setTimeout(() => {
+            settingsStatus.style.display = "none";
+        }, 5000);
+    }
+
+    // Load config on page load
+    loadConfig();
+
+    // ============ SETUP WIZARD ============
+
+    let wizardStep = 1;
+    const wizardOverlay = document.getElementById("setup-wizard-overlay");
+    const wizStep1 = document.getElementById("wizard-step-1");
+    const wizStep2 = document.getElementById("wizard-step-2");
+    const wizStep3 = document.getElementById("wizard-step-3");
+    const wizBack = document.getElementById("wiz-back");
+    const wizNext = document.getElementById("wiz-next");
+    const wizFinish = document.getElementById("wiz-finish");
+    const wizRemote = document.getElementById("wiz-remote");
+    const wizLocalDir = document.getElementById("wiz-local-dir");
+    const wizTestBtn = document.getElementById("wiz-test");
+    const wizTestStatus = document.getElementById("wiz-test-status");
+
+    // Check if first run (no config exists)
+    async function checkFirstRun() {
+        try {
+            const resp = await fetch("/api/config");
+            const data = await resp.json();
+            if (!data.exists) {
+                wizardOverlay.style.display = "flex";
+            }
+        } catch (err) {
+            console.error("Error checking config:", err);
+        }
+    }
+
+    // Navigate wizard steps
+    wizNext.addEventListener("click", () => {
+        if (wizardStep === 1) {
+            wizStep1.style.display = "none";
+            wizStep2.style.display = "block";
+            wizBack.style.display = "inline-flex";
+            wizardStep = 2;
+        } else if (wizardStep === 2) {
+            wizStep2.style.display = "none";
+            wizStep3.style.display = "block";
+            wizNext.style.display = "none";
+            wizFinish.style.display = "inline-flex";
+            document.getElementById("wiz-confirm-remote").textContent = wizRemote.value || "--";
+            document.getElementById("wiz-confirm-local").textContent = wizLocalDir.value || "--";
+            wizardStep = 3;
+        }
+    });
+
+    wizBack.addEventListener("click", () => {
+        if (wizardStep === 2) {
+            wizStep2.style.display = "none";
+            wizStep1.style.display = "block";
+            wizBack.style.display = "none";
+            wizardStep = 1;
+        } else if (wizardStep === 3) {
+            wizStep3.style.display = "none";
+            wizStep2.style.display = "block";
+            wizNext.style.display = "inline-flex";
+            wizFinish.style.display = "none";
+            wizardStep = 2;
+        }
+    });
+
+    // Test connection in wizard
+    wizTestBtn.addEventListener("click", async () => {
+        wizTestBtn.disabled = true;
+        wizTestBtn.textContent = "Testing...";
+        wizTestStatus.style.display = "none";
+        
+        try {
+            const resp = await fetch("/api/config/test-remote", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ remote: wizRemote.value })
+            });
+            const data = await resp.json();
+            
+            wizTestStatus.style.display = "block";
+            if (data.ok) {
+                wizTestStatus.className = "wizard-test-status settings-status success";
+                wizTestStatus.textContent = "Connected! Found " + data.file_count + " files.";
+            } else {
+                wizTestStatus.className = "wizard-test-status settings-status error";
+                wizTestStatus.textContent = "Failed: " + data.error;
+            }
+        } catch (err) {
+            wizTestStatus.style.display = "block";
+            wizTestStatus.className = "wizard-test-status settings-status error";
+            wizTestStatus.textContent = "Error: " + err;
+        } finally {
+            wizTestBtn.disabled = false;
+            wizTestBtn.textContent = "Test Connection";
+        }
+    });
+
+    // Finish wizard and save config
+    wizFinish.addEventListener("click", async () => {
+        wizFinish.disabled = true;
+        wizFinish.textContent = "Saving...";
+        
+        const payload = {
+            RCLONE_REMOTE: wizRemote.value,
+            LOCAL_DIR: wizLocalDir.value,
+            LOG_DIR: "/home/pi/logs",
+            APP_ROOT: "/home/pi/picframe_3.0",
+        };
+        
+        try {
+            const resp = await fetch("/api/config", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            const data = await resp.json();
+            
+            if (data.ok) {
+                wizardOverlay.style.display = "none";
+                loadConfig();
+                refreshStatus();
+                showSettingsStatus("success", "Setup complete! Configuration saved.");
+            } else {
+                alert("Failed to save: " + (data.errors || []).join(", "));
+            }
+        } catch (err) {
+            alert("Error: " + err);
+        } finally {
+            wizFinish.disabled = false;
+            wizFinish.textContent = "Finish Setup";
+        }
+    });
+
+    // Check on page load
+    checkFirstRun();
+</script>
+</body>
+</html>
