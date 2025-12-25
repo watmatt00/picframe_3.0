@@ -461,18 +461,16 @@ function renderSourcesTable() {
 
         const activateBtn = source.active
             ? ''
-            : `<button class="btn-small" onclick="activateSource('${escapeHtml(source.path)}', '${escapeHtml(source.id)}')">Activate</button>`;
+            : `<button class="btn-small" onclick="activateSource('${escapeHtml(source.path)}', '${escapeHtml(source.id)}')">Activate</button> `;
 
         return `
             <tr>
                 <td><strong>${escapeHtml(source.id)}</strong></td>
                 <td>${escapeHtml(source.label)}</td>
-                <td><code>${escapeHtml(source.path)}</code></td>
                 <td><code>${escapeHtml(source.remote || 'default')}</code></td>
                 <td>${statusBadges.join(' ')}</td>
-                <td>
-                    ${activateBtn}
-                    <button class="btn-small btn-danger" onclick="deleteSource('${escapeHtml(source.id)}')">Delete</button>
+                <td style="white-space: nowrap;">
+                    ${activateBtn}<button class="btn-small btn-danger" onclick="deleteSource('${escapeHtml(source.id)}')">Delete</button>
                 </td>
             </tr>
         `;
