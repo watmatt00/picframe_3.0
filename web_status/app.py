@@ -42,32 +42,6 @@ app = Flask(__name__)
 
 @app.route("/")
 def dashboard():
-    """Render the main dashboard page."""
-    host_name = socket.gethostname().upper()
-    paths = _get_paths()
-    return render_template(
-        "dashboard.html",
-        host_name=host_name,
-        script_path=str(paths["chk_script"]),
-        log_path=str(paths["log_file"]),
-    )
-
-
-@app.route("/sources")
-def sources_page():
-    """Render the tabbed dashboard (Status + Sources Manager)."""
-    host_name = socket.gethostname().upper()
-    paths = _get_paths()
-    return render_template(
-        "dashboard_tabbed.html",
-        host_name=host_name,
-        script_path=str(paths["chk_script"]),
-        log_path=str(paths["log_file"]),
-    )
-
-
-@app.route("/beta")
-def beta_page():
     """Render the beta dashboard with simplified, grandma-friendly interface."""
     host_name = socket.gethostname().upper()
     paths = _get_paths()
