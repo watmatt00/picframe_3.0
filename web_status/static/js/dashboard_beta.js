@@ -451,11 +451,13 @@ function renderSourcesTable() {
         const statusBadges = [];
 
         if (source.active) {
+            // Active sources only show "Active"
             statusBadges.push('<span class="source-status-badge active">Active</span>');
-        }
-        if (source.enabled) {
-            statusBadges.push('<span class="source-status-badge enabled">Enabled</span>');
+        } else if (source.enabled) {
+            // Non-active enabled sources show "Ready"
+            statusBadges.push('<span class="source-status-badge enabled">Ready</span>');
         } else {
+            // Disabled sources show "Disabled"
             statusBadges.push('<span class="source-status-badge disabled">Disabled</span>');
         }
 
