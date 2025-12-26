@@ -303,11 +303,14 @@ async function loadRemoteDirs() {
         });
         
         const data = await response.json();
-        
+
+        console.log('API response:', data);
+        console.log('data.dirs:', data.dirs);
+
         if (!data.ok) {
             throw new Error(data.error || 'Failed to list directories');
         }
-        
+
         renderRemoteDirs(data.dirs || []);
     } catch (err) {
         console.error('Failed to load remote dirs:', err);
@@ -334,6 +337,9 @@ function renderRemoteDirs(dirs) {
         // Handle both new object format and legacy string format
         const dirData = typeof dir === 'string' ? { name: dir, valid: true } : dir;
         const { name, valid, trimmed_name, reason } = dirData;
+
+        // Debug logging
+        console.log('Processing dir:', dir, 'name:', name, 'valid:', valid);
 
         if (!valid) {
             // Blocked directory - show with warning
