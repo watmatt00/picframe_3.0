@@ -367,51 +367,51 @@ def _has_problematic_spaces(dirname):
 def api_list_remote_dirs():
     """
     List directories at remote path.
-    
+
     Request body: {"remote": "kfgdrive:", "path": "dframe"}
-    
+
     Response:
         {"ok": true, "dirs": ["2024", "2023"]} or {"ok": false, "error": "..."}
     """
+    import json
+
     data = request.json or {}
     remote = data.get("remote", "").strip()
     path = data.get("path", "").strip()
-    
+
     if not remote:
         return jsonify({"ok": False, "error": "No remote specified"}), 400
-    
+
     # Build full remote path
     if path:
         full_path = f"{remote}{path}"
     else:
         full_path = remote
-    
+
     env = os.environ.copy()
     env.setdefault("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
-    
+
     try:
+        # Use lsjson instead of lsd to preserve exact directory names
         result = subprocess.run(
-            ["rclone", "lsd", full_path],
+            ["rclone", "lsjson", "--dirs-only", full_path],
             capture_output=True,
             text=True,
             timeout=30,
             env=env,
         )
-        
+
         if result.returncode != 0:
             error_msg = result.stderr.strip() or "Failed to list directories"
             return jsonify({"ok": False, "error": error_msg}), 500
-        
-        # Parse output - rclone lsd format: "-1 2024-01-01 12:00:00        -1 dirname"
+
+        # Parse JSON output - preserves exact directory names
         dirs = []
-        for line in result.stdout.strip().splitlines():
-            if line.strip():
-                # Extract directory name (last part after spaces)
-                parts = line.split()
-                if len(parts) >= 5:
-                    # IMPORTANT: Do NOT strip the directory name here
-                    # We need to preserve leading/trailing spaces for detection
-                    dir_name = parts[-1]
+        try:
+            json_data = json.loads(result.stdout)
+            for item in json_data:
+                if item.get("IsDir", False):
+                    dir_name = item.get("Name", "")
 
                     # Check for problematic spaces
                     has_problem, trimmed_name = _has_problematic_spaces(dir_name)
@@ -422,9 +422,11 @@ def api_list_remote_dirs():
                         "trimmed_name": trimmed_name if has_problem else None,
                         "reason": "Directory name has leading or trailing spaces" if has_problem else None
                     })
+        except json.JSONDecodeError as e:
+            return jsonify({"ok": False, "error": f"Failed to parse rclone output: {e}"}), 500
 
         return jsonify({"ok": True, "dirs": dirs})
-        
+
     except subprocess.TimeoutExpired:
         return jsonify({"ok": False, "error": "Command timed out (30s)"}), 500
     except FileNotFoundError:
