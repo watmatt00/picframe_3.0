@@ -636,7 +636,7 @@ function renderRemoteDirs(dirs) {
                     <span class="dir-warning-icon">⚠️</span>
                     <span class="dir-name-blocked">${escapeHtml(name)}</span>
                     <span class="dir-warning-text">
-                        Invalid name - rename to "${escapeHtml(trimmed_name)}"
+                        Invalid folder name. Correct in app.
                     </span>
                 </div>
             `;
