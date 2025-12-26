@@ -785,6 +785,18 @@ async function onFormSubmit(event) {
         return;
     }
 
+    // Show confirmation dialog
+    const confirmMessage = `Please confirm the new photo source:\n\n` +
+        `Name: ${formData.label}\n` +
+        `Cloud Location: ${formData.rclone_remote}\n` +
+        `Local Storage: ${formData.path}\n` +
+        (createDirectory ? `\nA new directory will be created.\n` : '') +
+        `\nDo you want to proceed?`;
+
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+
     // Disable submit button
     sourcesElements.btnSave.disabled = true;
     sourcesElements.btnSave.textContent = 'Saving...';
