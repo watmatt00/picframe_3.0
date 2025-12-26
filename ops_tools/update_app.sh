@@ -57,12 +57,12 @@ else
     exit 1
 fi
 
-log_message "Updating code with git pull (preserving local configs)..."
-# Use pull instead of reset --hard to preserve local changes to ignored files
-if git pull --rebase origin main >>"$LOG_FILE" 2>&1; then
-    log_message "git pull completed successfully."
+log_message "Resetting to origin/main (preserving ignored config files)..."
+# Use reset --hard to force update, ignored files (configs) are preserved automatically
+if git reset --hard origin/main >>"$LOG_FILE" 2>&1; then
+    log_message "Repository updated successfully."
 else
-    log_message "git pull failed or had conflicts. Manual intervention may be needed."
+    log_message "git reset failed. Manual intervention may be needed."
     exit 1
 fi
 
