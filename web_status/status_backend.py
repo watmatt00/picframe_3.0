@@ -757,7 +757,21 @@ def validate_source_data(source_id, label, path, rclone_remote):
     
     if ":" not in rclone_remote:
         return False, "Rclone remote must include ':' (e.g., remote:path)"
-    
+
+    # Validate rclone_remote for problematic spaces
+    if rclone_remote.strip() != rclone_remote:
+        return False, "Rclone remote path has leading or trailing spaces - please check the path"
+
+    # Extract the path component and check for spaces in directory names
+    if ":" in rclone_remote:
+        _, path_part = rclone_remote.split(":", 1)
+        if path_part:
+            # Check each path component for leading/trailing spaces
+            path_components = path_part.split("/")
+            for component in path_components:
+                if component and component.strip() != component:
+                    return False, f"Directory '{component}' has leading or trailing spaces - rename it in your cloud storage first"
+
     return True, None
 
 

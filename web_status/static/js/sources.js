@@ -320,7 +320,7 @@ async function loadRemoteDirs() {
 }
 
 /**
- * Render remote directories list
+ * Render remote directories list with validation warnings
  */
 function renderRemoteDirs(dirs) {
     if (dirs.length === 0) {
@@ -329,14 +329,32 @@ function renderRemoteDirs(dirs) {
         `;
         return;
     }
-    
-    const items = dirs.map(dir => 
-        `<div class="dir-item" data-dirname="${escapeHtml(dir)}">${escapeHtml(dir)}</div>`
-    ).join('');
-    
+
+    const items = dirs.map(dir => {
+        // Handle both new object format and legacy string format
+        const dirData = typeof dir === 'string' ? { name: dir, valid: true } : dir;
+        const { name, valid, trimmed_name, reason } = dirData;
+
+        if (!valid) {
+            // Blocked directory - show with warning
+            return `
+                <div class="dir-item-blocked" title="${escapeHtml(reason)}">
+                    <span class="dir-warning-icon">⚠️</span>
+                    <span class="dir-name-blocked">${escapeHtml(name)}</span>
+                    <span class="dir-warning-text">
+                        Invalid name - rename to "${escapeHtml(trimmed_name)}"
+                    </span>
+                </div>
+            `;
+        } else {
+            // Valid directory - clickable
+            return `<div class="dir-item" data-dirname="${escapeHtml(name)}">${escapeHtml(name)}</div>`;
+        }
+    }).join('');
+
     elements.remoteDirList.innerHTML = items;
-    
-    // Add click handlers
+
+    // Add click handlers only for valid directories
     elements.remoteDirList.querySelectorAll('.dir-item[data-dirname]').forEach(item => {
         item.addEventListener('click', () => {
             const dirname = item.getAttribute('data-dirname');

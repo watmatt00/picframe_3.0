@@ -342,6 +342,27 @@ def api_get_rclone_remotes():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+def _has_problematic_spaces(dirname):
+    """
+    Check if directory name has leading or trailing spaces.
+
+    Args:
+        dirname: The directory name to check
+
+    Returns:
+        tuple: (has_problem, trimmed_name)
+            - has_problem: True if directory has leading/trailing spaces
+            - trimmed_name: The directory name with spaces stripped
+    """
+    if not dirname:
+        return False, dirname
+
+    trimmed = dirname.strip()
+    has_problem = (dirname != trimmed)
+
+    return has_problem, trimmed
+
+
 @app.route("/api/rclone/list-dirs", methods=["POST"])
 def api_list_remote_dirs():
     """
@@ -388,9 +409,20 @@ def api_list_remote_dirs():
                 # Extract directory name (last part after spaces)
                 parts = line.split()
                 if len(parts) >= 5:
+                    # IMPORTANT: Do NOT strip the directory name here
+                    # We need to preserve leading/trailing spaces for detection
                     dir_name = parts[-1]
-                    dirs.append(dir_name)
-        
+
+                    # Check for problematic spaces
+                    has_problem, trimmed_name = _has_problematic_spaces(dir_name)
+
+                    dirs.append({
+                        "name": dir_name,
+                        "valid": not has_problem,
+                        "trimmed_name": trimmed_name if has_problem else None,
+                        "reason": "Directory name has leading or trailing spaces" if has_problem else None
+                    })
+
         return jsonify({"ok": True, "dirs": dirs})
         
     except subprocess.TimeoutExpired:
