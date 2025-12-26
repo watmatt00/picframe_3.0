@@ -429,7 +429,7 @@ async function loadSources() {
         console.error('Failed to load sources:', err);
         sourcesElements.sourcesTbody.innerHTML = `
             <tr>
-                <td colspan="5" class="loading-cell" style="color: #fca5a5;">
+                <td colspan="6" class="loading-cell" style="color: #fca5a5;">
                     Error loading sources: ${escapeHtml(err.message)}
                 </td>
             </tr>
@@ -469,6 +469,7 @@ function renderSourcesTable() {
             <tr>
                 <td><strong>${escapeHtml(source.id)}</strong></td>
                 <td>${escapeHtml(source.label)}</td>
+                <td><code>${escapeHtml(source.path)}</code></td>
                 <td><code>${escapeHtml(source.remote || 'default')}</code></td>
                 <td>${statusBadges.join(' ')}</td>
                 <td style="white-space: nowrap;">
@@ -636,7 +637,7 @@ function renderRemoteDirs(dirs) {
                     <span class="dir-warning-icon">⚠️</span>
                     <span class="dir-name-blocked">${escapeHtml(name)}</span>
                     <span class="dir-warning-text">
-                        Invalid folder name. Correct in app.
+                        Invalid name - rename to "${escapeHtml(trimmed_name)}"
                     </span>
                 </div>
             `;
