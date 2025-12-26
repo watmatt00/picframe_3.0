@@ -469,8 +469,8 @@ function renderSourcesTable() {
             <tr>
                 <td><strong>${escapeHtml(source.id)}</strong></td>
                 <td>${escapeHtml(source.label)}</td>
-                <td><code>${escapeHtml(source.path)}</code></td>
                 <td><code>${escapeHtml(source.remote || 'default')}</code></td>
+                <td><code>${escapeHtml(source.path)}</code></td>
                 <td>${statusBadges.join(' ')}</td>
                 <td style="white-space: nowrap;">
                     ${activateBtn}<button class="btn-small btn-danger" onclick="deleteSource('${escapeHtml(source.id)}')">Delete</button>
