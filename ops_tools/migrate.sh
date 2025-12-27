@@ -116,13 +116,14 @@ run_prep_phase() {
     echo "PicFrame Migration - Phase 1: PREP"
     echo "========================================"
     echo ""
-    
+
     preflight_checks
     check_legacy_exists
     extract_legacy_config
     verify_rclone_config
     check_or_clone_repo
     generate_new_config_files
+    initialize_frame_live_symlink
     setup_flask_service
     set_proper_permissions
     update_crontab_entries
@@ -373,17 +374,17 @@ setup_git_and_clone_repo() {
 generate_new_config_files() {
     echo ""
     echo "Generating new configuration files..."
-    
+
     # Source extracted config
     source "$MIGRATION_CACHE/extracted.conf"
-    
+
     # Determine current hostname and user
     local current_host=$(hostname -s 2>/dev/null || hostname 2>/dev/null || echo "")
     local current_user=$(whoami)
-    
+
     # 1. Create ~/.picframe/config with ALL keys Flask expects
     mkdir -p "$HOME/.picframe"
-    
+
     cat > "$HOME/.picframe/config" <<EOF
 # ~/.picframe/config - PicFrame Configuration
 # Migrated from legacy installation on $(date)
@@ -419,9 +420,9 @@ ACTIVE_SOURCE=""
 # Symlink for active photo directory
 FRAME_LIVE_PATH="$HOME/Pictures/frame_live"
 EOF
-    
+
     echo "✓ Created ~/.picframe/config"
-    
+
     # 2. Verify Flask can parse the config
     if python3 -c "
 import sys
@@ -447,16 +448,16 @@ print('✓ Config validated successfully')
     else
         echo "⚠ WARNING: Flask config validation had issues (may still work)"
     fi
-    
+
     # 3. Generate frame_sources.conf (Flask reads this for source list)
     local dirname=$(basename "$LOCAL_DIR")
     local source_id="${dirname%%_*}"
-    
+
     # If source_id is empty or same as dirname, use first 3 chars
     if [[ -z "$source_id" ]] || [[ "$source_id" == "$dirname" ]]; then
         source_id="${dirname:0:3}"
     fi
-    
+
     cat > "$NEW_APP_ROOT/config/frame_sources.conf" <<EOF
 # -------------------------------------------------------------------
 # frame_sources.conf
@@ -475,13 +476,13 @@ ${source_id}|Migrated Source (${dirname})|${LOCAL_DIR}|1|${RCLONE_REMOTE}
 # Add more sources here as needed:
 # example|Example Source|/home/pi/Pictures/example|0|remote:path
 EOF
-    
+
     echo "✓ Created $NEW_APP_ROOT/config/frame_sources.conf"
-    
+
     # 4. Ensure log directory exists (Flask needs to read logs)
     mkdir -p "$HOME/logs"
     echo "✓ Ensured log directory exists: $HOME/logs"
-    
+
     # 5. Create initial log file if it doesn't exist
     if [[ ! -f "$HOME/logs/frame_sync.log" ]]; then
         cat > "$HOME/logs/frame_sync.log" <<EOF
@@ -489,6 +490,41 @@ $(date '+%Y-%m-%d %H:%M:%S') migrate.sh - Initial log file created by migration
 $(date '+%Y-%m-%d %H:%M:%S') migrate.sh - Flask web dashboard will read from this file
 EOF
         echo "✓ Created initial log file"
+    fi
+}
+
+initialize_frame_live_symlink() {
+    echo ""
+    echo "Initializing frame_live symlink..."
+
+    # Source extracted config to get LOCAL_DIR
+    source "$MIGRATION_CACHE/extracted.conf"
+
+    local pictures_dir="$HOME/Pictures"
+    local frame_live_path="$HOME/Pictures/frame_live"
+
+    # Ensure Pictures directory exists
+    if [[ ! -d "$pictures_dir" ]]; then
+        mkdir -p "$pictures_dir"
+        echo "  Created $pictures_dir"
+    fi
+
+    # Create frame_live symlink pointing to migrated source
+    if [[ -L "$frame_live_path" ]] || [[ -e "$frame_live_path" ]]; then
+        echo "  Removing existing frame_live..."
+        rm -f "$frame_live_path"
+    fi
+
+    if [[ -d "$LOCAL_DIR" ]]; then
+        ln -s "$LOCAL_DIR" "$frame_live_path"
+        echo "✓ Created frame_live symlink: $frame_live_path -> $LOCAL_DIR"
+    else
+        echo "⚠ WARNING: LOCAL_DIR does not exist yet: $LOCAL_DIR"
+        echo "  Creating directory structure..."
+        mkdir -p "$LOCAL_DIR"
+        ln -s "$LOCAL_DIR" "$frame_live_path"
+        echo "✓ Created frame_live symlink: $frame_live_path -> $LOCAL_DIR"
+        echo "  Note: Directory is empty - run sync to populate with photos"
     fi
 }
 
