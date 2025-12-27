@@ -111,11 +111,50 @@ show_status() {
 # PHASE 1: PREPARATION
 # ==========================================
 
+cleanup_on_prep_failure() {
+    local exit_code=$?
+
+    # Disable the trap to prevent recursive calls
+    trap - EXIT ERR INT TERM
+
+    # Only prompt if migration cache was actually created
+    if [[ ! -d "$MIGRATION_CACHE" ]]; then
+        exit $exit_code
+    fi
+
+    echo ""
+    echo "=========================================="
+    echo "Migration Phase 1 did not complete"
+    echo "=========================================="
+    echo ""
+    echo "The preparation phase was interrupted or failed."
+    echo "Migration cache exists at: $MIGRATION_CACHE"
+    echo ""
+    read -p "Reset to legacy state and clean up? [Y/n] " -r
+    echo
+
+    if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+        echo "Cleaning up migration cache..."
+        rm -rf "$MIGRATION_CACHE"
+        echo "✓ Migration state reset to legacy"
+        echo ""
+        echo "You can re-run ./migrate.sh to start over."
+    else
+        echo "Migration cache preserved at: $MIGRATION_CACHE"
+        echo "Run './migrate.sh --status' to check current state."
+    fi
+
+    exit $exit_code
+}
+
 run_prep_phase() {
     echo "========================================"
     echo "PicFrame Migration - Phase 1: PREP"
     echo "========================================"
     echo ""
+
+    # Setup cleanup trap - if script exits/fails before completion, reset state
+    trap 'cleanup_on_prep_failure' EXIT ERR INT TERM
 
     preflight_checks
     check_legacy_exists
@@ -128,6 +167,9 @@ run_prep_phase() {
     set_proper_permissions
     update_crontab_entries
     show_testing_instructions
+
+    # Disable cleanup trap - prep completed successfully
+    trap - EXIT ERR INT TERM
 }
 
 preflight_checks() {
