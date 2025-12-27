@@ -34,6 +34,14 @@
             font-size: 1.2em;
             margin-right: 0.25rem;
         }
+        /* Hide technical columns by default */
+        .tech-column {
+            display: none;
+        }
+        /* Show technical columns when table has show-tech class */
+        .sources-table.show-tech .tech-column {
+            display: table-cell;
+        }
     </style>
 </head>
 <body>
@@ -220,17 +228,16 @@
                     <table class="sources-table" id="sources-table">
                         <thead>
                             <tr>
-                                <th>ID</th>
+                                <th class="tech-column">ID</th>
                                 <th>Name</th>
                                 <th>Cloud Location</th>
-                                <th>Local Storage</th>
                                 <th>Status</th>
-                                <th>Actions</th>
+                                <th class="tech-column">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="sources-tbody">
                             <tr>
-                                <td colspan="6" class="loading-cell">Loading photo sources...</td>
+                                <td colspan="4" class="loading-cell">Loading photo sources...</td>
                             </tr>
                         </tbody>
                     </table>

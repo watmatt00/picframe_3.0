@@ -61,12 +61,15 @@ function initAdvancedToggles() {
         });
     }
 
-    // Sources table advanced toggle (for future enhancement)
+    // Sources table advanced toggle
     const sourcesTableToggle = document.getElementById('sources-table-advanced-toggle');
-    if (sourcesTableToggle) {
+    const sourcesTable = document.getElementById('sources-table');
+    if (sourcesTableToggle && sourcesTable) {
         sourcesTableToggle.addEventListener('click', () => {
-            // Placeholder for showing technical columns (ID, full paths, etc.)
-            alert('Advanced table view coming soon!');
+            sourcesTable.classList.toggle('show-tech');
+            sourcesTableToggle.textContent = sourcesTable.classList.contains('show-tech')
+                ? '▾ Hide technical columns'
+                : '▸ Show technical columns';
         });
     }
 }
@@ -441,7 +444,7 @@ function renderSourcesTable() {
     if (sourcesState.sources.length === 0) {
         sourcesElements.sourcesTbody.innerHTML = `
             <tr>
-                <td colspan="6" class="loading-cell">No sources configured yet</td>
+                <td colspan="4" class="loading-cell">No sources configured yet</td>
             </tr>
         `;
         return;
@@ -467,12 +470,11 @@ function renderSourcesTable() {
 
         return `
             <tr>
-                <td><strong>${escapeHtml(source.id)}</strong></td>
+                <td class="tech-column"><strong>${escapeHtml(source.id)}</strong></td>
                 <td>${escapeHtml(source.label)}</td>
                 <td><code>${escapeHtml(source.remote || 'default')}</code></td>
-                <td><code>${escapeHtml(source.path)}</code></td>
                 <td>${statusBadges.join(' ')}</td>
-                <td style="white-space: nowrap;">
+                <td class="tech-column" style="white-space: nowrap;">
                     ${activateBtn}<button class="btn-small btn-danger" onclick="deleteSource('${escapeHtml(source.id)}')">Delete</button>
                 </td>
             </tr>
