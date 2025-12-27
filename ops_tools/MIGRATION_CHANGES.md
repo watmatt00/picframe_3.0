@@ -111,6 +111,35 @@ check_or_clone_repo
 - Updated `--help` output with step-by-step instructions
 - Clarified that manual clone is recommended but automatic works too
 
+### 5. New Function: `initialize_frame_live_symlink()`
+**Location:** Lines 496-529
+**Called from:** `run_prep_phase()` at line 126
+
+**Purpose:**
+- Creates `~/Pictures` directory if it doesn't exist
+- Creates `~/Pictures/frame_live` symlink pointing to the migrated source's LOCAL_DIR
+- Handles case where LOCAL_DIR doesn't exist yet (creates it automatically)
+
+**Why this is critical:**
+- The web dashboard and photo sources system rely on the `frame_live` symlink
+- This establishes the active photo directory structure expected by PicFrame 3.0
+- Without this, the migrated system wouldn't have the active photo directory properly linked
+
+**Behavior:**
+```bash
+# If LOCAL_DIR exists:
+✓ Created frame_live symlink: /home/pi/Pictures/frame_live -> /home/pi/Pictures/holidays
+
+# If LOCAL_DIR doesn't exist yet:
+⚠ WARNING: LOCAL_DIR does not exist yet: /home/pi/Pictures/holidays
+  Creating directory structure...
+✓ Created frame_live symlink: /home/pi/Pictures/frame_live -> /home/pi/Pictures/holidays
+  Note: Directory is empty - run sync to populate with photos
+```
+
+**Integration:**
+This function is called during Phase 1 (prep) after generating config files, ensuring the symlink is in place before the Flask service starts and before the first sync runs.
+
 ## Benefits
 
 ✅ **More Transparent:** Users can review script before running
