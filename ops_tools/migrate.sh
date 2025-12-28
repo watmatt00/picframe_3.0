@@ -163,6 +163,7 @@ run_prep_phase() {
     check_or_clone_repo
     generate_new_config_files
     initialize_frame_live_symlink
+    update_picframe_config
     setup_flask_service
     set_proper_permissions
     update_crontab_entries
@@ -568,6 +569,57 @@ initialize_frame_live_symlink() {
         echo "✓ Created frame_live symlink: $frame_live_path -> $LOCAL_DIR"
         echo "  Note: Directory is empty - run sync to populate with photos"
     fi
+}
+
+update_picframe_config() {
+    echo ""
+    echo "Updating picframe application configuration..."
+
+    local config_file="$HOME/picframe_data/config/configuration.yaml"
+
+    # Check if picframe config exists
+    if [[ ! -f "$config_file" ]]; then
+        echo "  ℹ Picframe configuration not found at $config_file"
+        echo "  Skipping picframe config update (install picframe first)"
+        return 0
+    fi
+
+    # Backup the original config
+    cp "$config_file" "$config_file.pre-migration.bak"
+    echo "  ✓ Backed up config to: $config_file.pre-migration.bak"
+
+    local frame_live_path="$HOME/Pictures/frame_live"
+
+    # Update pic_dir to point to frame_live symlink
+    if grep -q "^[[:space:]]*pic_dir:" "$config_file"; then
+        # Use sed to update the pic_dir line, preserving indentation
+        sed -i.tmp "s|^\\([[:space:]]*pic_dir:[[:space:]]*\\).*|\\1\"$frame_live_path\"|" "$config_file"
+        echo "  ✓ Updated pic_dir to: $frame_live_path"
+    else
+        echo "  ⚠ WARNING: pic_dir not found in config file"
+    fi
+
+    # Enable HTTP server for thumbnail support in dashboard
+    if grep -q "^[[:space:]]*use_http:" "$config_file"; then
+        sed -i.tmp "s|^\\([[:space:]]*use_http:[[:space:]]*\\).*|\\1True|" "$config_file"
+        echo "  ✓ Enabled HTTP server (use_http: True)"
+    else
+        echo "  ⚠ WARNING: use_http not found in config file"
+    fi
+
+    # Verify port is set (default 9000)
+    if grep -q "^[[:space:]]*port:[[:space:]]*9000" "$config_file"; then
+        echo "  ✓ HTTP port already set to 9000"
+    elif grep -q "^[[:space:]]*port:" "$config_file"; then
+        echo "  ℹ HTTP port set to: $(grep -E '^[[:space:]]*port:' "$config_file" | head -1 | awk '{print $2}')"
+    fi
+
+    # Clean up temp file
+    rm -f "$config_file.tmp"
+
+    echo "✓ Picframe configuration updated"
+    echo "  Note: Restart picframe.service for changes to take effect:"
+    echo "        systemctl --user restart picframe.service"
 }
 
 setup_flask_service() {

@@ -140,6 +140,40 @@ check_or_clone_repo
 **Integration:**
 This function is called during Phase 1 (prep) after generating config files, ensuring the symlink is in place before the Flask service starts and before the first sync runs.
 
+### 6. New Function: `update_picframe_config()`
+**Location:** Lines 574-623
+**Called from:** `run_prep_phase()` at line 166
+
+**Purpose:**
+- Updates the picframe application's `configuration.yaml` file
+- Sets `pic_dir` to point to the new `frame_live` symlink
+- Enables HTTP server (`use_http: True`) for thumbnail support in dashboard
+- Verifies HTTP port is configured (default 9000)
+
+**Why this is critical:**
+- Without updating `pic_dir`, picframe would still use the old hardcoded directory
+- HTTP server must be enabled for thumbnails to work in the web dashboard
+- The `frame_live` symlink allows switching photo sources without reconfiguring picframe
+
+**Behavior:**
+```bash
+# If picframe config exists:
+✓ Backed up config to: /home/pi/picframe_data/config/configuration.yaml.pre-migration.bak
+✓ Updated pic_dir to: /home/pi/Pictures/frame_live
+✓ Enabled HTTP server (use_http: True)
+✓ HTTP port already set to 9000
+
+# If picframe not installed yet:
+ℹ Picframe configuration not found at /home/pi/picframe_data/config/configuration.yaml
+  Skipping picframe config update (install picframe first)
+```
+
+**Safety features:**
+- Creates backup before modifying: `configuration.yaml.pre-migration.bak`
+- Gracefully skips if picframe not installed yet
+- Uses sed with proper escaping to preserve YAML formatting
+- Preserves indentation and structure
+
 ## Benefits
 
 ✅ **More Transparent:** Users can review script before running
