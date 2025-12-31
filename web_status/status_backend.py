@@ -668,6 +668,247 @@ def run_sync_now():
         }
 
 
+def check_github_updates():
+    """
+    Check for GitHub updates without applying them.
+
+    Returns:
+        {
+            "ok": bool,
+            "updates_available": bool,
+            "current_commit": str,
+            "current_tag": str,
+            "remote_commit": str,
+            "remote_tag": str,
+            "commits_behind": int,
+            "output": str
+        }
+    """
+    paths = _get_paths()
+    repo_dir = paths["app_root"]
+
+    # Verify git repo exists
+    git_dir = repo_dir / ".git"
+    if not git_dir.exists():
+        return {
+            "ok": False,
+            "updates_available": False,
+            "current_commit": "N/A",
+            "current_tag": "N/A",
+            "remote_commit": "N/A",
+            "remote_tag": "N/A",
+            "commits_behind": 0,
+            "output": f"ERROR: Not a git repository: {repo_dir}"
+        }
+
+    env = os.environ.copy()
+    env.setdefault("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
+
+    output_lines = []
+
+    try:
+        # Get current commit
+        result = subprocess.run(
+            ["git", "-C", str(repo_dir), "log", "-1", "--format=%h - %s"],
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=10,
+            env=env,
+        )
+        current_commit = result.stdout.strip() if result.returncode == 0 else "Unknown"
+
+        # Get current tag (if any)
+        result = subprocess.run(
+            ["git", "-C", str(repo_dir), "describe", "--tags", "--exact-match", "HEAD"],
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=10,
+            env=env,
+        )
+        current_tag = result.stdout.strip() if result.returncode == 0 else ""
+
+        # Fetch from remote
+        output_lines.append("Fetching latest from GitHub...")
+        result = subprocess.run(
+            ["git", "-C", str(repo_dir), "fetch", "--all"],
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=30,
+            env=env,
+        )
+
+        if result.returncode != 0:
+            error_msg = result.stderr.strip() or "Failed to fetch"
+            output_lines.append(f"ERROR: {error_msg}")
+            return {
+                "ok": False,
+                "updates_available": False,
+                "current_commit": current_commit,
+                "current_tag": current_tag,
+                "remote_commit": "N/A",
+                "remote_tag": "N/A",
+                "commits_behind": 0,
+                "output": "\n".join(output_lines)
+            }
+
+        output_lines.append("Fetch completed successfully.")
+
+        # Get remote commit
+        result = subprocess.run(
+            ["git", "-C", str(repo_dir), "log", "-1", "--format=%h - %s", "origin/main"],
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=10,
+            env=env,
+        )
+        remote_commit = result.stdout.strip() if result.returncode == 0 else "Unknown"
+
+        # Get remote tag
+        result = subprocess.run(
+            ["git", "-C", str(repo_dir), "describe", "--tags", "origin/main"],
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=10,
+            env=env,
+        )
+        remote_tag = result.stdout.strip() if result.returncode == 0 else ""
+
+        # Count commits behind
+        result = subprocess.run(
+            ["git", "-C", str(repo_dir), "rev-list", "--count", "HEAD..origin/main"],
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=10,
+            env=env,
+        )
+        commits_behind = int(result.stdout.strip()) if result.returncode == 0 else 0
+
+        # Build output
+        output_lines.append("")
+        output_lines.append("Current Version:")
+        output_lines.append(f"  {current_commit}")
+        if current_tag:
+            output_lines.append(f"  Tag: {current_tag}")
+
+        output_lines.append("")
+        output_lines.append("Latest Available:")
+        output_lines.append(f"  {remote_commit}")
+        if remote_tag:
+            output_lines.append(f"  Tag: {remote_tag}")
+
+        output_lines.append("")
+        if commits_behind > 0:
+            output_lines.append(f"Status: {commits_behind} commit(s) behind - UPDATE AVAILABLE")
+        else:
+            output_lines.append("Status: Up to date")
+
+        return {
+            "ok": True,
+            "updates_available": commits_behind > 0,
+            "current_commit": current_commit,
+            "current_tag": current_tag,
+            "remote_commit": remote_commit,
+            "remote_tag": remote_tag,
+            "commits_behind": commits_behind,
+            "output": "\n".join(output_lines)
+        }
+
+    except subprocess.TimeoutExpired:
+        output_lines.append("ERROR: Operation timed out")
+        return {
+            "ok": False,
+            "updates_available": False,
+            "current_commit": current_commit if 'current_commit' in locals() else "Unknown",
+            "current_tag": current_tag if 'current_tag' in locals() else "",
+            "remote_commit": "N/A",
+            "remote_tag": "N/A",
+            "commits_behind": 0,
+            "output": "\n".join(output_lines)
+        }
+    except Exception as e:
+        output_lines.append(f"ERROR: {str(e)}")
+        return {
+            "ok": False,
+            "updates_available": False,
+            "current_commit": current_commit if 'current_commit' in locals() else "Unknown",
+            "current_tag": current_tag if 'current_tag' in locals() else "",
+            "remote_commit": "N/A",
+            "remote_tag": "N/A",
+            "commits_behind": 0,
+            "output": "\n".join(output_lines)
+        }
+
+
+def apply_github_update():
+    """
+    Apply GitHub update by running update_app.sh.
+
+    Returns:
+        {
+            "ok": bool,
+            "output": str
+        }
+    """
+    paths = _get_paths()
+    app_root = paths["app_root"]
+    update_script = app_root / "ops_tools" / "update_app.sh"
+
+    if not update_script.exists():
+        return {
+            "ok": False,
+            "output": f"ERROR: Update script not found: {update_script}"
+        }
+
+    if not os.access(update_script, os.X_OK):
+        return {
+            "ok": False,
+            "output": f"ERROR: Update script not executable: {update_script}"
+        }
+
+    env = os.environ.copy()
+    env.setdefault("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
+
+    try:
+        result = subprocess.run(
+            [str(update_script)],
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=600,  # 10 minutes - same as deep check
+            env=env,
+        )
+
+        output = ""
+        if result.stdout:
+            output += result.stdout
+        if result.stderr:
+            if output:
+                output += "\n"
+            output += result.stderr
+
+        return {
+            "ok": (result.returncode == 0),
+            "output": output or "Update script completed"
+        }
+
+    except subprocess.TimeoutExpired:
+        return {
+            "ok": False,
+            "output": "ERROR: Update timed out after 10 minutes. This may indicate a problem.\nCheck logs at: $HOME/logs/frame_sync.log"
+        }
+    except Exception as e:
+        return {
+            "ok": False,
+            "output": f"ERROR: Failed to run update script: {str(e)}"
+        }
+
+
 # ---------------------------------------------------------------------------
 # Source helpers (for API endpoints)
 # ---------------------------------------------------------------------------

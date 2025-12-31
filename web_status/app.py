@@ -96,6 +96,22 @@ def api_sync_now():
     return jsonify(result)
 
 
+@app.route("/api/update/check", methods=["POST"])
+def api_check_update():
+    """Check for GitHub updates."""
+    from status_backend import check_github_updates
+    result = check_github_updates()
+    return jsonify(result)
+
+
+@app.route("/api/update/apply", methods=["POST"])
+def api_apply_update():
+    """Apply GitHub update."""
+    from status_backend import apply_github_update
+    result = apply_github_update()
+    return jsonify(result)
+
+
 @app.route("/api/current-image")
 def api_current_image():
     """Proxy the current image from picframe's web interface (port 9000)."""

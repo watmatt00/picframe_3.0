@@ -148,6 +148,10 @@ function initStatusDashboard() {
     const btnRestartWeb = document.getElementById("btn-restart-web");
     const btnRestartWebSpinner = document.getElementById("btn-restart-web-spinner");
     const btnRestartWebLabel = document.getElementById("btn-restart-web-label");
+    const btnUpdate = document.getElementById("btn-update");
+    const btnUpdateSpinner = document.getElementById("btn-update-spinner");
+    const btnUpdateLabel = document.getElementById("btn-update-label");
+    const updateOutputEl = document.getElementById("update-output");
 
     // Technical details elements
     const techSourceName = document.getElementById("tech-source-name");
@@ -342,9 +346,100 @@ function initStatusDashboard() {
         }
     }
 
+    async function checkForUpdates() {
+        btnUpdate.disabled = true;
+        btnUpdateSpinner.style.display = "inline-block";
+        btnUpdateLabel.textContent = "Checking…";
+
+        try {
+            const resp = await fetch("/api/update/check", { method: "POST" });
+            const data = await resp.json();
+
+            if (!data.ok) {
+                updateOutputEl.textContent = "Error checking updates:\n\n" + (data.output || "Unknown error");
+                alert("Failed to check for updates. See output below for details.");
+                return;
+            }
+
+            // Display status in output section
+            updateOutputEl.textContent = data.output || "Check completed";
+
+            // If updates available, prompt user
+            if (data.updates_available) {
+                const message =
+                    `GitHub Update Available!\n\n` +
+                    `Current: ${data.current_commit}\n` +
+                    (data.current_tag ? `Tag: ${data.current_tag}\n\n` : '\n') +
+                    `Available: ${data.remote_commit}\n` +
+                    (data.remote_tag ? `Tag: ${data.remote_tag}\n\n` : '\n') +
+                    `You are ${data.commits_behind} commit(s) behind.\n\n` +
+                    `Do you want to apply this update?\n\n` +
+                    `This will:\n` +
+                    `• Pull latest code from GitHub\n` +
+                    `• Preserve your configuration files\n` +
+                    `• Restart frame and dashboard services\n` +
+                    `• Take approximately 1-2 minutes`;
+
+                if (confirm(message)) {
+                    await applyUpdate();
+                }
+            } else {
+                alert("You are up to date!\n\n" +
+                      `Current: ${data.current_commit}\n` +
+                      (data.current_tag ? `Tag: ${data.current_tag}` : ''));
+            }
+        } catch (err) {
+            console.error("Failed to check updates", err);
+            updateOutputEl.textContent = "Error: " + err;
+            alert("Error checking for updates: " + err);
+        } finally {
+            btnUpdate.disabled = false;
+            btnUpdateSpinner.style.display = "none";
+            btnUpdateLabel.textContent = "🔄 Check Updates";
+        }
+    }
+
+    async function applyUpdate() {
+        btnUpdate.disabled = true;
+        btnUpdateSpinner.style.display = "inline-block";
+        btnUpdateLabel.textContent = "Updating…";
+        updateOutputEl.textContent = "Update in progress...\n\nPlease wait, this may take 1-2 minutes.";
+
+        try {
+            const resp = await fetch("/api/update/apply", { method: "POST" });
+            const data = await resp.json();
+
+            // Display full output
+            updateOutputEl.textContent = (data.output || "").trim() || "Update completed";
+
+            if (data.ok) {
+                alert(
+                    "Update completed successfully!\n\n" +
+                    "The dashboard will reload in 3 seconds.\n\n" +
+                    "Note: Services have been restarted automatically."
+                );
+                setTimeout(() => {
+                    window.location.reload();
+                }, 3000);
+            } else {
+                alert("Update failed. See output below for details.\n\n" + (data.output || "Unknown error"));
+            }
+        } catch (err) {
+            console.error("Failed to apply update", err);
+            updateOutputEl.textContent = "Error: " + err;
+            alert("Error applying update: " + err);
+        } finally {
+            // Don't re-enable if update succeeded (page will reload)
+            btnUpdate.disabled = false;
+            btnUpdateSpinner.style.display = "none";
+            btnUpdateLabel.textContent = "🔄 Check Updates";
+        }
+    }
+
     btnRefresh.addEventListener("click", refreshStatus);
     btnRunD.addEventListener("click", runChkSyncD);
     btnSyncNow.addEventListener("click", syncNow);
+    btnUpdate.addEventListener("click", checkForUpdates);
     btnRestartPf.addEventListener("click", restartPfService);
     btnRestartWeb.addEventListener("click", restartWebService);
 
