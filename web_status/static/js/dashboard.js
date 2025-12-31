@@ -395,7 +395,7 @@ function initStatusDashboard() {
         } finally {
             btnUpdate.disabled = false;
             btnUpdateSpinner.style.display = "none";
-            btnUpdateLabel.textContent = "🔄 Check Updates";
+            btnUpdateLabel.textContent = "⬆️ Update App";
         }
     }
 
@@ -432,7 +432,7 @@ function initStatusDashboard() {
             // Don't re-enable if update succeeded (page will reload)
             btnUpdate.disabled = false;
             btnUpdateSpinner.style.display = "none";
-            btnUpdateLabel.textContent = "🔄 Check Updates";
+            btnUpdateLabel.textContent = "⬆️ Update App";
         }
     }
 
