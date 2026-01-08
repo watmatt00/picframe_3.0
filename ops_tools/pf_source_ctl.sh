@@ -24,6 +24,7 @@ set -euo pipefail
 # LOAD CONFIGURATION
 # -------------------------------------------------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SVC_CTL="${SCRIPT_DIR}/../app_control/svc_ctl.sh"
 
 # shellcheck source=../lib/config_loader.sh
 source "${SCRIPT_DIR}/../lib/config_loader.sh"
@@ -111,8 +112,8 @@ restart_picframe_service() {
 
     export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 
-    if ! systemctl --user restart "${PF_SERVICE_NAME}"; then
-        log "ERROR: Failed to restart ${PF_SERVICE_NAME} via systemctl --user."
+    if ! "${SVC_CTL}" -pr; then
+        log "ERROR: Failed to restart ${PF_SERVICE_NAME} via ${SVC_CTL}."
         exit 1
     fi
 

@@ -15,7 +15,7 @@ First-Time Setup (Recommended)
    Follow the prompts to add your cloud storage (Google Drive, Dropbox, etc.)
 
 2. Start the web dashboard:
-   bash ~/picframe_3.0/app_control/pf_web_start_svc.sh
+   bash ~/picframe_3.0/app_control/svc_ctl.sh -ws
 
 3. Open the dashboard in a browser:
    http://<your-pi-ip>:5050
@@ -74,13 +74,9 @@ kfr|Koofr|/home/pi/Pictures/kfr_frame|1|koofr:kframe
 
 picframe_3.0/
 ├── app_control/
+│ ├── svc_ctl.sh – Unified service control (picframe & web)
 │ ├── frame_sync_cron.sh – Cron wrapper for scheduled syncs
-│ ├── pf_start_svc.sh – Start picframe service
-│ ├── pf_stop_svc.sh – Stop picframe service
-│ ├── pf_restart_svc.sh – Restart picframe service
-│ ├── pf_web_start_svc.sh – Start web dashboard
-│ ├── pf_web_stop_svc.sh – Stop web dashboard
-│ └── pf_web_restart_svc.sh – Restart web dashboard
+│ └── start_picframe_app.sh – Initial app launcher
 │
 ├── config/
 │ ├── crontab – Template cron installed by update_app.sh
@@ -121,17 +117,20 @@ picframe_3.0/
 
 🛠️ Common Commands
 
-Start picframe service:
-bash ~/picframe_3.0/app_control/pf_start_svc.sh
+Service Control (Unified Script):
+# PicFrame service
+bash ~/picframe_3.0/app_control/svc_ctl.sh -ps      # Start
+bash ~/picframe_3.0/app_control/svc_ctl.sh -px      # Stop
+bash ~/picframe_3.0/app_control/svc_ctl.sh -pr      # Restart
 
-Stop picframe service:
-bash ~/picframe_3.0/app_control/pf_stop_svc.sh
+# Web dashboard
+bash ~/picframe_3.0/app_control/svc_ctl.sh -ws      # Start
+bash ~/picframe_3.0/app_control/svc_ctl.sh -wx      # Stop
+bash ~/picframe_3.0/app_control/svc_ctl.sh -wr      # Restart
 
-Restart picframe service:
-bash ~/picframe_3.0/app_control/pf_restart_svc.sh
-
-Start dashboard:
-bash ~/picframe_3.0/app_control/pf_web_start_svc.sh
+# Alternative verbose syntax
+bash ~/picframe_3.0/app_control/svc_ctl.sh -picframe-restart
+bash ~/picframe_3.0/app_control/svc_ctl.sh -web-restart
 
 Run quick sync check:
 bash ~/picframe_3.0/ops_tools/chk_sync.sh

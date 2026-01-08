@@ -4,8 +4,7 @@ set -euo pipefail
 LOG_FILE="$HOME/logs/frame_sync.log"
 REPO_DIR="$HOME/picframe_3.0"
 CRONTAB_FILE="$REPO_DIR/config/crontab"
-PF_RESTART="$REPO_DIR/app_control/pf_restart_svc.sh"
-DASHBOARD_RESTART="$REPO_DIR/app_control/pf_web_restart_svc.sh"
+SVC_CTL="$REPO_DIR/app_control/svc_ctl.sh"
 
 log_message() {
     local message="$1"
@@ -90,27 +89,27 @@ else
 fi
 
 # Restart picframe viewer service (user service via wrapper)
-if [[ -x "$PF_RESTART" ]]; then
-    log_message "Restarting PicFrame service via $PF_RESTART..."
-    if "$PF_RESTART"; then
+if [[ -x "$SVC_CTL" ]]; then
+    log_message "Restarting PicFrame service via $SVC_CTL -pr..."
+    if "$SVC_CTL" -pr; then
         log_message "PicFrame service restart completed."
     else
         log_message "PicFrame restart script returned non-zero exit code."
     fi
 else
-    log_message "PicFrame restart script not found or not executable."
+    log_message "Service control script not found or not executable."
 fi
 
 # Restart web status dashboard (system service via wrapper)
-if [[ -x "$DASHBOARD_RESTART" ]]; then
-    log_message "Restarting web status dashboard via $DASHBOARD_RESTART..."
-    if "$DASHBOARD_RESTART"; then
+if [[ -x "$SVC_CTL" ]]; then
+    log_message "Restarting web status dashboard via $SVC_CTL -wr..."
+    if "$SVC_CTL" -wr; then
         log_message "Dashboard restart completed."
     else
         log_message "Dashboard restart script returned non-zero exit code."
     fi
 else
-    log_message "Dashboard restart script not found or not executable."
+    log_message "Service control script not found or not executable."
 fi
 
 log_message "===== App update completed successfully ====="

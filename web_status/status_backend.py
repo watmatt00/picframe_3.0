@@ -551,18 +551,18 @@ def run_chk_sync_detailed():
 
 def run_restart_pf_service():
     """
-    Run pf_restart_svc.sh and return its stdout/stderr.
+    Run svc_ctl.sh to restart PicFrame service and return its stdout/stderr.
     """
     paths = _get_paths()
     app_root = paths["app_root"]
-    restart_script = app_root / "app_control" / "pf_restart_svc.sh"
+    svc_ctl_script = app_root / "app_control" / "svc_ctl.sh"
 
     env = os.environ.copy()
     env.setdefault("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
 
     try:
         result = subprocess.run(
-            [str(restart_script)],
+            [str(svc_ctl_script), "-pr"],
             text=True,
             capture_output=True,
             check=False,
@@ -584,24 +584,24 @@ def run_restart_pf_service():
     except Exception as e:
         return {
             "ok": False,
-            "output": f"Error running pf_restart_svc.sh: {e}",
+            "output": f"Error running svc_ctl.sh: {e}",
         }
 
 
 def run_restart_web_service():
     """
-    Run pf_web_restart_svc.sh and return its stdout/stderr.
+    Run svc_ctl.sh to restart web service and return its stdout/stderr.
     """
     paths = _get_paths()
     app_root = paths["app_root"]
-    restart_script = app_root / "app_control" / "pf_web_restart_svc.sh"
+    svc_ctl_script = app_root / "app_control" / "svc_ctl.sh"
 
     env = os.environ.copy()
     env.setdefault("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
 
     try:
         result = subprocess.run(
-            [str(restart_script)],
+            [str(svc_ctl_script), "-wr"],
             text=True,
             capture_output=True,
             check=False,
@@ -623,7 +623,7 @@ def run_restart_web_service():
     except Exception as e:
         return {
             "ok": False,
-            "output": f"Error running pf_web_restart_svc.sh: {e}",
+            "output": f"Error running svc_ctl.sh: {e}",
         }
 
 
