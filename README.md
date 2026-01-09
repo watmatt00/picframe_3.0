@@ -72,48 +72,50 @@ kfr|Koofr|/home/pi/Pictures/kfr_frame|1|koofr:kframe
 
 📁 Project Structure
 
+```
 picframe_3.0/
 ├── app_control/
-│ ├── svc_ctl.sh – Unified service control (picframe & web)
-│ ├── frame_sync_cron.sh – Cron wrapper for scheduled syncs
-│ └── start_picframe_app.sh – Initial app launcher
+│   ├── svc_ctl.sh – Unified service control (picframe & web)
+│   ├── frame_sync_cron.sh – Cron wrapper for scheduled syncs
+│   └── start_picframe_app.sh – Initial app launcher
 │
 ├── config/
-│ ├── crontab – Template cron installed by update_app.sh
-│ ├── config.example – Template user config file
-│ └── frame_sources.conf – Source definitions for gdt/kfr
+│   ├── crontab – Template cron installed by update_app.sh
+│   ├── config.example – Template user config file
+│   └── frame_sources.conf – Source definitions for gdt/kfr
 │
 ├── lib/
-│ └── config_loader.sh – Shared config loading for all scripts
+│   └── config_loader.sh – Shared config loading for all scripts
 │
 ├── web_status/
-│ ├── app.py – Flask backend with API endpoints
-│ ├── status_backend.py – Status and sync checking logic
-│ ├── config_manager.py – Configuration read/write module
-│ ├── static/
-│ │ ├── css/
-│ │ │ └── dashboard.css – Dashboard styling
-│ │ └── js/
-│ │   └── dashboard.js – Dashboard interactivity
-│ └── templates/
-│   └── dashboard.html – Dashboard UI with settings panel
+│   ├── app.py – Flask backend with API endpoints
+│   ├── status_backend.py – Status and sync checking logic
+│   ├── config_manager.py – Configuration read/write module
+│   ├── static/
+│   │   ├── css/
+│   │   │   └── dashboard.css – Dashboard styling
+│   │   └── js/
+│   │       └── dashboard.js – Dashboard interactivity
+│   └── templates/
+│       └── dashboard.html – Dashboard UI with settings panel
 │
 ├── ops_tools/
-│ ├── archive/ – Backed up production scripts
-│ ├── migrate.sh – Migrate from legacy flat installation to git structure
-│ ├── frame_sync.sh – Main sync script with SAFE_MODE
-│ ├── chk_status.sh – Parses log for last sync / restart / download
-│ ├── chk_sync.sh – Source-aware count checker
-│ ├── pf_source_ctl.sh – Photo source selection controller
-│ ├── validate_config.sh – Configuration validator
-│ ├── t_frame_sync.sh – Test sync script
-│ ├── t_chk_sync.sh – Test chk script
-│ ├── promote_to_prod.sh – Promote test scripts to production
-│ └── update_app.sh – Pull GitHub updates & restart services
+│   ├── archive/ – Backed up production scripts
+│   ├── migrate.sh – Migrate from legacy flat installation to git structure
+│   ├── frame_sync.sh – Main sync script with SAFE_MODE
+│   ├── chk_status.sh – Parses log for last sync / restart / download
+│   ├── chk_sync.sh – Source-aware count checker
+│   ├── pf_source_ctl.sh – Photo source selection controller
+│   ├── validate_config.sh – Configuration validator
+│   ├── t_frame_sync.sh – Test sync script
+│   ├── t_chk_sync.sh – Test chk script
+│   ├── promote_to_prod.sh – Promote test scripts to production
+│   └── update_app.sh – Pull GitHub updates & restart services
 │
 ├── CONTRIBUTING.md – Contributor guidelines and standards
 ├── tasklist.md – Project task tracking and priorities
 └── README.md
+```
 
 🛠️ Common Commands
 
