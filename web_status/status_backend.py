@@ -13,6 +13,7 @@ import subprocess
 from collections import deque
 from datetime import datetime
 from pathlib import Path
+import shutil
 
 from config_manager import (
     config_exists,
@@ -40,6 +41,48 @@ def _get_paths():
 # Service names
 WEB_SERVICE_NAME = "pf-web-status.service"   # system service
 PF_SERVICE_NAME = "picframe.service"         # user service (systemctl --user)
+
+
+# ---------------------------------------------------------------------------
+# Storage info helper
+# ---------------------------------------------------------------------------
+
+def _get_storage_info():
+    """
+    Get disk usage for root filesystem.
+
+    Returns:
+        dict with total_gb, used_gb, free_gb, percent_used, and severity
+    """
+    try:
+        usage = shutil.disk_usage("/")
+        total_gb = usage.total / (1024 ** 3)
+        used_gb = usage.used / (1024 ** 3)
+        free_gb = usage.free / (1024 ** 3)
+        percent_used = (usage.used / usage.total) * 100
+
+        if percent_used >= 95:
+            severity = "ERROR"
+        elif percent_used >= 80:
+            severity = "WARN"
+        else:
+            severity = "OK"
+
+        return {
+            "total_gb": round(total_gb, 1),
+            "used_gb": round(used_gb, 1),
+            "free_gb": round(free_gb, 1),
+            "percent_used": round(percent_used, 1),
+            "severity": severity,
+        }
+    except Exception:
+        return {
+            "total_gb": None,
+            "used_gb": None,
+            "free_gb": None,
+            "percent_used": None,
+            "severity": "UNKNOWN",
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -474,6 +517,7 @@ def get_status_payload():
             "pf_status": pf_status,
             "current_remote": current_remote or "--",
             "source_details": source_details,
+            "storage": _get_storage_info(),
             "activity": {
                 "last_service_restart": log_info["last_service_restart"],
                 "last_file_download": log_info["last_file_download"],
@@ -503,6 +547,13 @@ def get_status_payload():
                 "source_name": "--",
                 "remote_path": "--",
                 "local_path": "--",
+            },
+            "storage": {
+                "total_gb": None,
+                "used_gb": None,
+                "free_gb": None,
+                "percent_used": None,
+                "severity": "UNKNOWN",
             },
             "activity": {
                 "last_service_restart": "--",

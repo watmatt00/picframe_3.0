@@ -236,6 +236,31 @@ main {
     background: #6b7280;
     box-shadow: none;
 }
+
+/* Storage Indicator Styles */
+.storage-indicator {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 999px;
+    display: inline-block;
+}
+.storage-indicator.ok {
+    background: #22c55e;
+    box-shadow: 0 0 6px rgba(34, 197, 94, 0.75);
+}
+.storage-indicator.warn {
+    background: #fbbf24;
+    box-shadow: 0 0 6px rgba(251, 191, 36, 0.75);
+}
+.storage-indicator.error {
+    background: #ef4444;
+    box-shadow: 0 0 6px rgba(239, 68, 68, 0.75);
+}
+.storage-indicator.unknown {
+    background: #6b7280;
+    box-shadow: none;
+}
+
 .remote-label {
     font-size: 0.88rem;
 }

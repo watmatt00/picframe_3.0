@@ -128,6 +128,8 @@ function initStatusDashboard() {
     const pfDot = document.getElementById("pf-status-dot");
     const pfText = document.getElementById("pf-status-text");
     const currentRemoteEl = document.getElementById("current-remote");
+    const storageIndicator = document.getElementById("storage-indicator");
+    const storageText = document.getElementById("storage-text");
 
     const lastRunEl = document.getElementById("last-run");
     const lastRestartEl = document.getElementById("last-restart");
@@ -163,6 +165,17 @@ function initStatusDashboard() {
         const up = s === "active" || s === "running";
         dotEl.classList.toggle("off", !up);
         textEl.textContent = up ? "RUNNING" : (status || "UNKNOWN").toUpperCase();
+    }
+
+    function setStorageDisplay(indicatorEl, textEl, storage) {
+        if (!storage || storage.percent_used === null) {
+            indicatorEl.className = "storage-indicator unknown";
+            textEl.textContent = "UNKNOWN";
+            return;
+        }
+        const severity = (storage.severity || "UNKNOWN").toLowerCase();
+        indicatorEl.className = "storage-indicator " + severity;
+        textEl.textContent = `${storage.percent_used}% (${storage.used_gb} / ${storage.total_gb} GB)`;
     }
 
     function setTrafficLights(severity) {
@@ -234,6 +247,9 @@ function initStatusDashboard() {
             setServiceDot(pfDot, pfText, data.pf_status);
 
             currentRemoteEl.textContent = data.current_remote || "--";
+
+            // Update storage display
+            setStorageDisplay(storageIndicator, storageText, data.storage);
 
             // Update technical details section
             const sourceDetails = data.source_details || {};
