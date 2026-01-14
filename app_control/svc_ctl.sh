@@ -173,29 +173,41 @@ parse_args() {
     # Remove leading dash if present
     arg="${arg#-}"
 
-    # Extract service identifier
-    if [[ "$arg" =~ (^|-)p($|-|icframe) ]]; then
+    # Extract service identifier (check longest matches first to avoid false positives)
+    if [[ "$arg" =~ picframe ]]; then
         service="picframe"
         # Remove matched service from arg for cleaner action parsing
-        arg=$(echo "$arg" | sed -E 's/(^|-)p(icframe)?($|-)/\1\3/')
-    elif [[ "$arg" =~ (^|-)pf($|-) ]]; then
+        arg=$(echo "$arg" | sed -E 's/picframe//')
+    elif [[ "$arg" =~ pf ]]; then
         service="picframe"
-        arg=$(echo "$arg" | sed -E 's/(^|-)pf($|-)/\1\3/')
-    elif [[ "$arg" =~ (^|-)w($|-|eb) ]]; then
+        arg=$(echo "$arg" | sed -E 's/pf//')
+    elif [[ "$arg" =~ web ]]; then
         service="web"
-        arg=$(echo "$arg" | sed -E 's/(^|-)w(eb)?($|-)/\1\3/')
+        arg=$(echo "$arg" | sed -E 's/web//')
+    elif [[ "$arg" =~ ^p ]]; then
+        service="picframe"
+        arg=$(echo "$arg" | sed -E 's/^p//')
+    elif [[ "$arg" =~ ^w ]]; then
+        service="web"
+        arg=$(echo "$arg" | sed -E 's/^w//')
     fi
 
     # Clean up any leading/trailing dashes from arg
     arg=$(echo "$arg" | sed 's/^-*//' | sed 's/-*$//')
 
-    # Extract action identifier
-    if [[ "$arg" =~ (^|-)s($|-|tart) ]]; then
-        action="start"
-    elif [[ "$arg" =~ (^|-)x($|-) ]] || [[ "$arg" =~ (^|-)stop($|-) ]]; then
-        action="stop"
-    elif [[ "$arg" =~ (^|-)r($|-|estart) ]]; then
+    # Extract action identifier (check longest matches first)
+    if [[ "$arg" =~ restart ]]; then
         action="restart"
+    elif [[ "$arg" =~ start ]]; then
+        action="start"
+    elif [[ "$arg" =~ stop ]]; then
+        action="stop"
+    elif [[ "$arg" =~ ^r ]]; then
+        action="restart"
+    elif [[ "$arg" =~ ^s ]]; then
+        action="start"
+    elif [[ "$arg" =~ ^x ]]; then
+        action="stop"
     fi
 
     # Validate both service and action were found
