@@ -76,14 +76,14 @@ def api_run_chk_syncd():
 
 @app.route("/api/restart-pf", methods=["POST"])
 def api_restart_pf():
-    """Trigger pf_restart_svc.sh and return its output as JSON."""
+    """Trigger svc_ctl.sh -pr to restart PicFrame service and return its output as JSON."""
     result = run_restart_pf_service()
     return jsonify(result)
 
 
 @app.route("/api/restart-web", methods=["POST"])
 def api_restart_web():
-    """Trigger pf_web_restart_svc.sh and return its output as JSON."""
+    """Trigger svc_ctl.sh -wr to restart web service and return its output as JSON."""
     result = run_restart_web_service()
     return jsonify(result)
 
