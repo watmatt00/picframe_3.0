@@ -222,6 +222,8 @@ def _systemctl_status(service: str, user: bool = False) -> str:
     env = os.environ.copy()
     env.setdefault("PATH",
         "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
+    # Set XDG_RUNTIME_DIR for systemctl --user commands
+    env.setdefault("XDG_RUNTIME_DIR", "/run/user/1000")
 
     try:
         if not user:
@@ -559,6 +561,8 @@ def run_restart_pf_service():
 
     env = os.environ.copy()
     env.setdefault("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
+    # Set XDG_RUNTIME_DIR for systemctl --user to work from system service context
+    env.setdefault("XDG_RUNTIME_DIR", "/run/user/1000")
 
     try:
         result = subprocess.run(
@@ -637,8 +641,8 @@ def run_sync_now():
 
     env = os.environ.copy()
     env.setdefault("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
-    # Ensure XDG_RUNTIME_DIR is set for systemctl --user
-    env.setdefault("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+    # Set XDG_RUNTIME_DIR for systemctl --user commands (pi user is UID 1000)
+    env.setdefault("XDG_RUNTIME_DIR", "/run/user/1000")
 
     try:
         result = subprocess.run(
