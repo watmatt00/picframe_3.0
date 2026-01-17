@@ -11,8 +11,7 @@
 Description=PictureFrame on Pi
 
 [Service]
-# xinit uses ~/.xserverrc to start Xorg with -logfile /dev/null
-# This prevents log bloat from EDID spam (~100MB/hour otherwise)
+# Xorg log managed by /etc/logrotate.d/xorg-picframe (caps at 50MB)
 ExecStart=xinit /home/pi/picframe_3.0/app_control/start_picframe_app.sh
 Restart=always
 

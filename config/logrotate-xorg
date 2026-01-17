@@ -1,0 +1,14 @@
+# Logrotate config for Xorg log
+# Install to /etc/logrotate.d/xorg-picframe with:
+#   sudo cp logrotate-xorg /etc/logrotate.d/xorg-picframe
+#
+# Aggressively rotates Xorg logs to prevent disk fill from EDID spam
+
+/var/log/Xorg.0.log {
+    size 50M
+    rotate 2
+    compress
+    missingok
+    notifempty
+    copytruncate
+}

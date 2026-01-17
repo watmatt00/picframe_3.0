@@ -7,8 +7,8 @@ CRONTAB_FILE="$REPO_DIR/config/crontab"
 SVC_CTL="$REPO_DIR/app_control/svc_ctl.sh"
 SYSTEMD_USER_SRC="$REPO_DIR/systemd/user"
 SYSTEMD_USER_DEST="$HOME/.config/systemd/user"
-XSERVERRC_SRC="$REPO_DIR/config/xserverrc"
-XSERVERRC_DEST="$HOME/.xserverrc"
+LOGROTATE_SRC="$REPO_DIR/config/logrotate-xorg"
+LOGROTATE_DEST="/etc/logrotate.d/xorg-picframe"
 
 log_message() {
     local message="$1"
@@ -29,16 +29,16 @@ cleanup_pycache() {
     fi
 }
 
-install_xserverrc() {
-    if [[ ! -f "$XSERVERRC_SRC" ]]; then
-        log_message "No xserverrc in repo; skipping."
+install_logrotate_xorg() {
+    if [[ ! -f "$LOGROTATE_SRC" ]]; then
+        log_message "No logrotate-xorg in repo; skipping."
         return
     fi
 
-    if [[ ! -f "$XSERVERRC_DEST" ]] || ! cmp -s "$XSERVERRC_SRC" "$XSERVERRC_DEST"; then
-        log_message "Installing xserverrc to suppress Xorg log bloat..."
-        cp "$XSERVERRC_SRC" "$XSERVERRC_DEST"
-        chmod +x "$XSERVERRC_DEST"
+    if [[ ! -f "$LOGROTATE_DEST" ]] || ! sudo cmp -s "$LOGROTATE_SRC" "$LOGROTATE_DEST"; then
+        log_message "Installing logrotate config to manage Xorg log size..."
+        sudo cp "$LOGROTATE_SRC" "$LOGROTATE_DEST"
+        sudo chmod 644 "$LOGROTATE_DEST"
     fi
 }
 
@@ -138,8 +138,8 @@ fi
 # Install systemd user services from repo
 install_systemd_user_services
 
-# Install xserverrc to suppress Xorg log bloat
-install_xserverrc
+# Install logrotate to manage Xorg log size (caps at 50MB)
+install_logrotate_xorg
 
 # Restart picframe viewer service (user service via wrapper)
 if [[ -x "$SVC_CTL" ]]; then
