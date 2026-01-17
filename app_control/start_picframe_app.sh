@@ -39,6 +39,14 @@ if ! python -c "import picframe" 2>/dev/null; then
     exit 1
 fi
 
+# Clear image cache on startup to prevent stale file warnings
+# The database will be rebuilt on first run
+PICFRAME_DB="$HOME/picframe_data/data/pictureframe.db3"
+if [[ -f "$PICFRAME_DB" ]]; then
+    rm -f "$PICFRAME_DB" "$PICFRAME_DB-journal" 2>/dev/null || true
+    log_message "Cleared picframe image cache"
+fi
+
 # Use wrapper script to enable HEIC support
 WRAPPER_SCRIPT="$HOME/picframe_3.0/app_control/picframe_wrapper.py"
 
