@@ -32,17 +32,20 @@ else
     exit 1
 fi
 
-# Confirm picframe is on PATH
-if ! command -v picframe >/dev/null 2>&1; then
-    log_message "ERROR: 'picframe' command not found in venv PATH."
+# Confirm picframe is installed
+if ! python -c "import picframe" 2>/dev/null; then
+    log_message "ERROR: picframe module not found in venv."
     log_message "       Run: source /home/pi/venv_picframe/bin/activate && pip install picframe"
     exit 1
 fi
 
-log_message "Launching picframe (logging to $APP_LOG)..."
+# Use wrapper script to enable HEIC support
+WRAPPER_SCRIPT="$HOME/picframe_3.0/app_control/picframe_wrapper.py"
 
-# Run picframe and capture its stdout/stderr
-picframe >>"$APP_LOG" 2>&1 || {
+log_message "Launching picframe with HEIC support (logging to $APP_LOG)..."
+
+# Run picframe via wrapper and capture its stdout/stderr
+python "$WRAPPER_SCRIPT" >>"$APP_LOG" 2>&1 || {
     rc=$?
     log_message "ERROR: picframe exited with code $rc. See $APP_LOG for details."
     exit $rc
