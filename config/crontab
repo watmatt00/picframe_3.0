@@ -6,6 +6,9 @@
 
 */15 * * * * /home/pi/picframe_3.0/app_control/frame_sync_cron.sh
 
+# ── Auto-update check (runs hourly, script checks if scheduled time matches)
+0 * * * * /home/pi/picframe_3.0/app_control/auto_update_cron.sh
+
 # ── Display control (uses DISPLAY=:0 and XDG_RUNTIME_DIR so xrandr works from cron)
 
 # Sun–Thu: turn OFF at 22:45

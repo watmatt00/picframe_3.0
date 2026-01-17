@@ -112,6 +112,29 @@ def api_apply_update():
     return jsonify(result)
 
 
+@app.route("/api/auto-update/status")
+def api_auto_update_status():
+    """
+    Get auto-update status including config, last run, and next scheduled.
+
+    Response:
+        {
+            "enabled": bool,
+            "frequency": str,
+            "day": int,
+            "hour": int,
+            "minute": int,
+            "last_run": str or null,
+            "last_status": str,
+            "last_message": str,
+            "next_scheduled": str or null
+        }
+    """
+    from status_backend import get_auto_update_status
+    result = get_auto_update_status()
+    return jsonify(result)
+
+
 @app.route("/api/current-image")
 def api_current_image():
     """Proxy the current image from picframe's web interface (port 9000)."""

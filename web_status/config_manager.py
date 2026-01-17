@@ -63,6 +63,32 @@ CONFIG_SCHEMA = {
         "required": False,
         "description": "Symlink path for active photo source",
     },
+    # Auto-update settings
+    "AUTO_UPDATE_ENABLED": {
+        "default": "false",
+        "required": False,
+        "description": "Enable automatic updates (true/false)",
+    },
+    "AUTO_UPDATE_FREQUENCY": {
+        "default": "monthly",
+        "required": False,
+        "description": "Update frequency: weekly, biweekly, monthly",
+    },
+    "AUTO_UPDATE_DAY": {
+        "default": "0",
+        "required": False,
+        "description": "Day of week for updates (0=Sunday...6=Saturday)",
+    },
+    "AUTO_UPDATE_HOUR": {
+        "default": "3",
+        "required": False,
+        "description": "Hour of day for updates (0-23)",
+    },
+    "AUTO_UPDATE_MINUTE": {
+        "default": "30",
+        "required": False,
+        "description": "Minute of hour for updates (0-59)",
+    },
 }
 
 
@@ -180,7 +206,43 @@ def validate_config(data: Dict[str, str]) -> Dict[str, List[str]]:
     rclone_remote = data.get("RCLONE_REMOTE", "")
     if rclone_remote and ":" not in rclone_remote:
         warnings.append("RCLONE_REMOTE should include a colon (e.g., mydrive:photos)")
-    
+
+    # Validate auto-update settings
+    auto_update_enabled = data.get("AUTO_UPDATE_ENABLED", "").lower()
+    if auto_update_enabled and auto_update_enabled not in ("true", "false"):
+        errors.append("AUTO_UPDATE_ENABLED must be 'true' or 'false'")
+
+    auto_update_freq = data.get("AUTO_UPDATE_FREQUENCY", "")
+    if auto_update_freq and auto_update_freq not in ("weekly", "biweekly", "monthly"):
+        errors.append("AUTO_UPDATE_FREQUENCY must be 'weekly', 'biweekly', or 'monthly'")
+
+    auto_update_day = data.get("AUTO_UPDATE_DAY", "")
+    if auto_update_day:
+        try:
+            day_int = int(auto_update_day)
+            if day_int < 0 or day_int > 6:
+                errors.append("AUTO_UPDATE_DAY must be 0-6 (Sunday-Saturday)")
+        except ValueError:
+            errors.append("AUTO_UPDATE_DAY must be a number 0-6")
+
+    auto_update_hour = data.get("AUTO_UPDATE_HOUR", "")
+    if auto_update_hour:
+        try:
+            hour_int = int(auto_update_hour)
+            if hour_int < 0 or hour_int > 23:
+                errors.append("AUTO_UPDATE_HOUR must be 0-23")
+        except ValueError:
+            errors.append("AUTO_UPDATE_HOUR must be a number 0-23")
+
+    auto_update_minute = data.get("AUTO_UPDATE_MINUTE", "")
+    if auto_update_minute:
+        try:
+            minute_int = int(auto_update_minute)
+            if minute_int < 0 or minute_int > 59:
+                errors.append("AUTO_UPDATE_MINUTE must be 0-59")
+        except ValueError:
+            errors.append("AUTO_UPDATE_MINUTE must be a number 0-59")
+
     return {"errors": errors, "warnings": warnings}
 
 

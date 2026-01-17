@@ -8,6 +8,7 @@
 // =============================================================================
 
 let sourcesInitialized = false;
+let settingsInitialized = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize tab switching
@@ -100,6 +101,12 @@ function switchTab(tabId) {
     if (tabId === 'sources' && !sourcesInitialized) {
         initSourcesManager();
         sourcesInitialized = true;
+    }
+
+    // Initialize settings tab on first load
+    if (tabId === 'settings' && !settingsInitialized) {
+        initSettingsTab();
+        settingsInitialized = true;
     }
 }
 
@@ -1037,4 +1044,185 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// =============================================================================
+// SETTINGS TAB - AUTO-UPDATE FUNCTIONALITY
+// =============================================================================
+
+function initSettingsTab() {
+    // Load current config and status
+    loadAutoUpdateConfig();
+    loadAutoUpdateStatus();
+
+    // Set up form submission
+    const form = document.getElementById('auto-update-form');
+    if (form) {
+        form.addEventListener('submit', saveAutoUpdateConfig);
+    }
+
+    // Set up "Update Now" button
+    const updateNowBtn = document.getElementById('btn-update-now');
+    if (updateNowBtn) {
+        updateNowBtn.addEventListener('click', triggerManualUpdate);
+    }
+}
+
+async function loadAutoUpdateConfig() {
+    try {
+        const resp = await fetch('/api/config');
+        const data = await resp.json();
+
+        if (data.config) {
+            const config = data.config;
+
+            // Set form values
+            document.getElementById('au-enabled').checked =
+                config.AUTO_UPDATE_ENABLED === 'true';
+            document.getElementById('au-frequency').value =
+                config.AUTO_UPDATE_FREQUENCY || 'monthly';
+            document.getElementById('au-day').value =
+                config.AUTO_UPDATE_DAY || '0';
+            document.getElementById('au-hour').value =
+                config.AUTO_UPDATE_HOUR || '3';
+            document.getElementById('au-minute').value =
+                config.AUTO_UPDATE_MINUTE || '30';
+        }
+    } catch (err) {
+        console.error('Failed to load auto-update config:', err);
+    }
+}
+
+async function loadAutoUpdateStatus() {
+    try {
+        const resp = await fetch('/api/auto-update/status');
+        const data = await resp.json();
+
+        // Update last run display
+        const lastRunEl = document.getElementById('au-last-run');
+        if (lastRunEl) {
+            lastRunEl.textContent = data.last_run || 'Never';
+        }
+
+        // Update status display with dot color
+        const statusDot = document.getElementById('au-status-dot');
+        const statusText = document.getElementById('au-last-status');
+        if (statusDot && statusText) {
+            switch (data.last_status) {
+                case 'success':
+                    statusDot.className = 'status-dot dot-ok';
+                    statusText.textContent = 'Success';
+                    break;
+                case 'error':
+                    statusDot.className = 'status-dot dot-error';
+                    statusText.textContent = 'Failed';
+                    break;
+                default:
+                    statusDot.className = 'status-dot';
+                    statusText.textContent = 'Never run';
+            }
+        }
+
+        // Update next scheduled display
+        const nextScheduledEl = document.getElementById('au-next-scheduled');
+        if (nextScheduledEl) {
+            if (data.enabled && data.next_scheduled) {
+                nextScheduledEl.textContent = data.next_scheduled;
+            } else if (!data.enabled) {
+                nextScheduledEl.textContent = 'Disabled';
+            } else {
+                nextScheduledEl.textContent = '--';
+            }
+        }
+    } catch (err) {
+        console.error('Failed to load auto-update status:', err);
+    }
+}
+
+async function saveAutoUpdateConfig(event) {
+    event.preventDefault();
+
+    // Get current config first
+    let currentConfig = {};
+    try {
+        const resp = await fetch('/api/config');
+        const data = await resp.json();
+        currentConfig = data.config || {};
+    } catch (err) {
+        showAutoUpdateMessage('error', 'Failed to load current config');
+        return;
+    }
+
+    // Update auto-update settings
+    currentConfig.AUTO_UPDATE_ENABLED = document.getElementById('au-enabled').checked ? 'true' : 'false';
+    currentConfig.AUTO_UPDATE_FREQUENCY = document.getElementById('au-frequency').value;
+    currentConfig.AUTO_UPDATE_DAY = document.getElementById('au-day').value;
+    currentConfig.AUTO_UPDATE_HOUR = document.getElementById('au-hour').value;
+    currentConfig.AUTO_UPDATE_MINUTE = document.getElementById('au-minute').value;
+
+    try {
+        const resp = await fetch('/api/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(currentConfig)
+        });
+
+        const result = await resp.json();
+
+        if (result.ok) {
+            showAutoUpdateMessage('success', 'Settings saved successfully');
+            // Reload status to show updated next scheduled time
+            loadAutoUpdateStatus();
+        } else {
+            const errors = result.errors || ['Unknown error'];
+            showAutoUpdateMessage('error', 'Failed to save: ' + errors.join(', '));
+        }
+    } catch (err) {
+        showAutoUpdateMessage('error', 'Error saving settings: ' + err.message);
+    }
+}
+
+async function triggerManualUpdate() {
+    if (!confirm('Run update now? This will check for and apply any available updates.')) {
+        return;
+    }
+
+    const btn = document.getElementById('btn-update-now');
+    const originalText = btn.textContent;
+    btn.textContent = 'Updating...';
+    btn.disabled = true;
+
+    try {
+        const resp = await fetch('/api/update/apply', {
+            method: 'POST'
+        });
+
+        const result = await resp.json();
+
+        if (result.ok) {
+            showAutoUpdateMessage('success', 'Update completed successfully!');
+            // Reload status to show updated last run time
+            loadAutoUpdateStatus();
+        } else {
+            showAutoUpdateMessage('error', result.output || 'Update failed');
+        }
+    } catch (err) {
+        showAutoUpdateMessage('error', 'Error running update: ' + err.message);
+    } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }
+}
+
+function showAutoUpdateMessage(type, message) {
+    const el = document.getElementById('auto-update-message');
+    if (!el) return;
+
+    el.className = `status-message ${type}`;
+    el.textContent = message;
+    el.style.display = 'block';
+
+    if (type === 'success') {
+        setTimeout(() => { el.style.display = 'none'; }, 5000);
+    }
 }

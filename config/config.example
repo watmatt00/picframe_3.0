@@ -50,3 +50,22 @@ ACTIVE_SOURCE=""
 # Symlink path for frame_live
 # The picframe application reads photos from this symlink
 FRAME_LIVE_PATH="/home/pi/Pictures/frame_live"
+
+# === AUTO-UPDATE SETTINGS ===
+
+# Enable automatic updates from GitHub
+# When enabled, PicFrame will check for and apply updates on a schedule
+AUTO_UPDATE_ENABLED="false"
+
+# Update frequency: weekly, biweekly, or monthly
+AUTO_UPDATE_FREQUENCY="monthly"
+
+# Day of week for updates (0=Sunday, 1=Monday, ..., 6=Saturday)
+AUTO_UPDATE_DAY="0"
+
+# Hour of day for updates (0-23, 24-hour format)
+# Recommended: 3-4 AM when display is off
+AUTO_UPDATE_HOUR="3"
+
+# Minute of hour for updates (0-59)
+AUTO_UPDATE_MINUTE="30"

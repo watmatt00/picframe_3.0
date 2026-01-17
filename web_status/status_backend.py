@@ -965,6 +965,127 @@ def apply_github_update():
 
 
 # ---------------------------------------------------------------------------
+# Auto-Update Status
+# ---------------------------------------------------------------------------
+
+AUTO_UPDATE_STATUS_PATH = Path.home() / ".picframe" / "auto_update_status.json"
+
+
+def get_auto_update_status():
+    """
+    Get auto-update status including last run time and next scheduled.
+
+    Returns:
+        {
+            "enabled": bool,
+            "frequency": str,
+            "day": int,
+            "hour": int,
+            "minute": int,
+            "last_run": str or None,
+            "last_status": str ("success", "error", "never_run"),
+            "last_message": str,
+            "next_scheduled": str or None
+        }
+    """
+    import json
+    from datetime import datetime, timedelta
+    from config_manager import get_config_with_defaults
+
+    config = get_config_with_defaults()
+
+    result = {
+        "enabled": config.get("AUTO_UPDATE_ENABLED", "false").lower() == "true",
+        "frequency": config.get("AUTO_UPDATE_FREQUENCY", "monthly"),
+        "day": int(config.get("AUTO_UPDATE_DAY", "0")),
+        "hour": int(config.get("AUTO_UPDATE_HOUR", "3")),
+        "minute": int(config.get("AUTO_UPDATE_MINUTE", "30")),
+        "last_run": None,
+        "last_status": "never_run",
+        "last_message": "",
+        "next_scheduled": None,
+    }
+
+    # Read status file if it exists
+    if AUTO_UPDATE_STATUS_PATH.exists():
+        try:
+            status_data = json.loads(AUTO_UPDATE_STATUS_PATH.read_text(encoding="utf-8"))
+            result["last_run"] = status_data.get("last_run")
+            result["last_status"] = status_data.get("status", "unknown")
+            result["last_message"] = status_data.get("message", "")
+        except Exception:
+            pass
+
+    # Calculate next scheduled time if enabled
+    if result["enabled"]:
+        result["next_scheduled"] = _calculate_next_update_time(
+            result["frequency"],
+            result["day"],
+            result["hour"],
+            result["minute"]
+        )
+
+    return result
+
+
+def _calculate_next_update_time(frequency: str, target_day: int, target_hour: int, target_minute: int) -> str:
+    """
+    Calculate the next scheduled update time.
+
+    Args:
+        frequency: "weekly", "biweekly", or "monthly"
+        target_day: Day of week (0=Sunday, 6=Saturday)
+        target_hour: Hour (0-23)
+        target_minute: Minute (0-59)
+
+    Returns:
+        ISO formatted datetime string
+    """
+    from datetime import datetime, timedelta
+
+    now = datetime.now()
+
+    # Python weekday: Monday=0, Sunday=6
+    # We use: Sunday=0, Saturday=6
+    # Convert target_day to Python weekday
+    python_target_day = (target_day - 1) % 7 if target_day > 0 else 6
+
+    # Find next occurrence of target day
+    days_ahead = python_target_day - now.weekday()
+    if days_ahead < 0:
+        days_ahead += 7
+    elif days_ahead == 0:
+        # Same day - check if time has passed
+        target_time = now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
+        if now >= target_time:
+            days_ahead = 7
+
+    next_run = now + timedelta(days=days_ahead)
+    next_run = next_run.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
+
+    # Adjust for frequency
+    if frequency == "biweekly":
+        # Run on odd ISO weeks
+        week_num = int(next_run.strftime("%V"))
+        if week_num % 2 == 0:
+            next_run += timedelta(days=7)
+    elif frequency == "monthly":
+        # Run on first occurrence of target day in month (day 1-7)
+        if next_run.day > 7:
+            # Move to next month
+            if next_run.month == 12:
+                next_month = next_run.replace(year=next_run.year + 1, month=1, day=1)
+            else:
+                next_month = next_run.replace(month=next_run.month + 1, day=1)
+            # Find first target_day in that month
+            days_until_target = (python_target_day - next_month.weekday()) % 7
+            next_run = next_month + timedelta(days=days_until_target)
+            next_run = next_run.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
+
+    return next_run.strftime("%Y-%m-%d %H:%M:%S")
+
+
+# ---------------------------------------------------------------------------
 # Source helpers (for API endpoints)
 # ---------------------------------------------------------------------------
 
