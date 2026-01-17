@@ -11,10 +11,9 @@
 Description=PictureFrame on Pi
 
 [Service]
-# Redirect Xorg log to /dev/null to prevent log bloat
-# The GPU driver logs EDID info ~15 times/sec causing massive log growth
-# Must specify full Xorg path for xinit to pass server args correctly
-ExecStart=xinit /home/pi/picframe_3.0/app_control/start_picframe_app.sh -- /usr/lib/xorg/Xorg -logfile /dev/null
+# xinit uses ~/.xserverrc to start Xorg with -logfile /dev/null
+# This prevents log bloat from EDID spam (~100MB/hour otherwise)
+ExecStart=xinit /home/pi/picframe_3.0/app_control/start_picframe_app.sh
 Restart=always
 
 [Install]

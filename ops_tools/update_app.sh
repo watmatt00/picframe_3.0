@@ -7,6 +7,8 @@ CRONTAB_FILE="$REPO_DIR/config/crontab"
 SVC_CTL="$REPO_DIR/app_control/svc_ctl.sh"
 SYSTEMD_USER_SRC="$REPO_DIR/systemd/user"
 SYSTEMD_USER_DEST="$HOME/.config/systemd/user"
+XSERVERRC_SRC="$REPO_DIR/config/xserverrc"
+XSERVERRC_DEST="$HOME/.xserverrc"
 
 log_message() {
     local message="$1"
@@ -24,6 +26,19 @@ cleanup_pycache() {
         find "$target_dir" -type d -name "__pycache__" -print -exec rm -rf {} +
     else
         log_message "web_status directory not found at $target_dir (skipping __pycache__ cleanup)"
+    fi
+}
+
+install_xserverrc() {
+    if [[ ! -f "$XSERVERRC_SRC" ]]; then
+        log_message "No xserverrc in repo; skipping."
+        return
+    fi
+
+    if [[ ! -f "$XSERVERRC_DEST" ]] || ! cmp -s "$XSERVERRC_SRC" "$XSERVERRC_DEST"; then
+        log_message "Installing xserverrc to suppress Xorg log bloat..."
+        cp "$XSERVERRC_SRC" "$XSERVERRC_DEST"
+        chmod +x "$XSERVERRC_DEST"
     fi
 }
 
@@ -122,6 +137,9 @@ fi
 
 # Install systemd user services from repo
 install_systemd_user_services
+
+# Install xserverrc to suppress Xorg log bloat
+install_xserverrc
 
 # Restart picframe viewer service (user service via wrapper)
 if [[ -x "$SVC_CTL" ]]; then

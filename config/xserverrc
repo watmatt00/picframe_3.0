@@ -1,0 +1,4 @@
+#!/bin/sh
+# Custom X server startup to suppress log bloat
+# Install to ~/.xserverrc
+exec /usr/lib/xorg/Xorg -logfile /dev/null "$@"
