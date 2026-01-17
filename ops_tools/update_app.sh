@@ -5,6 +5,8 @@ LOG_FILE="$HOME/logs/frame_sync.log"
 REPO_DIR="$HOME/picframe_3.0"
 CRONTAB_FILE="$REPO_DIR/config/crontab"
 SVC_CTL="$REPO_DIR/app_control/svc_ctl.sh"
+SYSTEMD_USER_SRC="$REPO_DIR/systemd/user"
+SYSTEMD_USER_DEST="$HOME/.config/systemd/user"
 
 log_message() {
     local message="$1"
@@ -22,6 +24,36 @@ cleanup_pycache() {
         find "$target_dir" -type d -name "__pycache__" -print -exec rm -rf {} +
     else
         log_message "web_status directory not found at $target_dir (skipping __pycache__ cleanup)"
+    fi
+}
+
+install_systemd_user_services() {
+    if [[ ! -d "$SYSTEMD_USER_SRC" ]]; then
+        log_message "No systemd/user directory in repo; skipping systemd install."
+        return
+    fi
+
+    # Create destination directory if needed
+    mkdir -p "$SYSTEMD_USER_DEST"
+
+    local updated=0
+    for service_file in "$SYSTEMD_USER_SRC"/*.service; do
+        [[ -f "$service_file" ]] || continue
+        local filename
+        filename=$(basename "$service_file")
+        local dest_file="$SYSTEMD_USER_DEST/$filename"
+
+        # Only update if file differs or doesn't exist
+        if [[ ! -f "$dest_file" ]] || ! cmp -s "$service_file" "$dest_file"; then
+            log_message "Installing systemd user service: $filename"
+            cp "$service_file" "$dest_file"
+            updated=1
+        fi
+    done
+
+    if [[ $updated -eq 1 ]]; then
+        log_message "Reloading systemd user daemon..."
+        systemctl --user daemon-reload
     fi
 }
 
@@ -87,6 +119,9 @@ if [[ -f "$CRONTAB_FILE" ]]; then
 else
     log_message "Crontab file $CRONTAB_FILE not found; skipping cron install."
 fi
+
+# Install systemd user services from repo
+install_systemd_user_services
 
 # Restart picframe viewer service (user service via wrapper)
 if [[ -x "$SVC_CTL" ]]; then

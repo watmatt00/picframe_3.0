@@ -1,0 +1,20 @@
+# PicFrame Display Service
+# Location: ~/.config/systemd/user/picframe.service
+#
+# Install with:
+#   mkdir -p ~/.config/systemd/user
+#   cp picframe.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user enable picframe.service
+
+[Unit]
+Description=PictureFrame on Pi
+
+[Service]
+# Start X with reduced log verbosity to prevent Xorg.log bloat
+# -logverbose 0 disables informational messages (EDID spam)
+ExecStart=xinit /home/pi/picframe_3.0/app_control/start_picframe_app.sh -- -logverbose 0
+Restart=always
+
+[Install]
+WantedBy=default.target

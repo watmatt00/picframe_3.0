@@ -49,6 +49,16 @@
   Environment Rules
   - PC/Tablet: Use test scripts (t_*.sh), promote with promote_to_prod.sh
   - Raspberry Pi: Only update with update_app.sh, never run promote_to_prod.sh
+  - tailscale vpn for remote access/managment
+  - kframe - local pi running picframe app.  
+      - DNS - kframe.local 
+      - 192.168.102.200 
+      - vpn 100.69.17.26
+  - mnbframe -  remote pi running picframe app
+      - vpn 100.125.51.92
+  - fuckms - local PC 
+      - 192.168.102.100
+      - vpn 100.82.140.119
 
   Deployment Rules
   - All development and code changes take place on PC
